@@ -55,7 +55,7 @@ if __name__ == '__main__':
     check_permissions(filename)
     
     thermostat1 = \
-        temperature_thread.Temperature_Thread(filename="/home/mlamonta/thermostat/floor_temps.csv", 
+        temperature_thread.Temperature_Thread(filename="floor_temps.csv", 
                                               device_names=["main_floor_temp",
                                                             "top_floor_temp",
                                                             "basement_floor_temp"])
