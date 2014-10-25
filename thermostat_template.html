@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        
+        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+        <script type="text/javascript">
+            google.load("visualization", "1", {packages:["corechart"]});
+            google.setOnLoadCallback(drawChart);
+            function drawChart() {
+                var data = google.visualization.arrayToDataTable([
+                ['Time', 'Main Floor', 'Top Floor', 'Basement'],
+                
+                %s
+                
+                //
+                //  Example:
+                //     time        main   top  basement
+                //  ['21:00:55',  75.65, 76.01, 77.02],
+                //  ['21:01:11',  75.76, 76.01, 77.02]
+
+                ]);
+
+                var options = { title: 'Zone Temperatures (F)',
+                                hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
+
+                var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+                chart.draw(data, options);
+            }
+        </script>
+    </head>
+    <body>
+        
+        <div class="container">
+        
+            <div class="header">
+                <ul class="nav nav-pills pull-right">
+                    <li class="active"><a href="#">Thermostat</a></li>
+                </ul>
+                <h3 class="text-muted">Home Control</h3>
+            </div>
+
+            <div class="jumbotron">
+                <h2>Thermostat</h2>
+                <p class="lead">Current average temperature is: %s F</p>
+                <div id="chart_div" style="height: 500px;"></div><!--  -->
+            </div>
+
+            <div class="footer">
+                <p>&copy; Lamontagne 2014</p>
+            </div>
+
+        </div> <!-- /container -->
+        
+        <link href="bootstrap.min.css" rel="stylesheet"/>
+    </body>
+</html>
