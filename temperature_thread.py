@@ -56,7 +56,8 @@ class Temperature_Thread(Thread):
                 print "Error getting temperature ("+device+"), got: \"" + t[device] + "\" setting to null"
                 t[device] = "null"
           
-          self.current_temperature = x / count
+          if count > 0:
+            self.current_temperature = x / count
           
           self.mutex.acquire()
           self.file_handle.write(str(time.time()))
