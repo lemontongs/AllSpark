@@ -54,7 +54,7 @@ def check_permissions(filename):
 ################################################################################
 if __name__ == '__main__':
     
-    filename = "/var/www/control/thermostat.html"
+    filename = "/var/www/control/index.html"
     
     if len(sys.argv) == 2:
         if "-h" == sys.argv[1]:

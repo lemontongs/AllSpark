@@ -75,8 +75,8 @@ class User_Thread(Thread):
             #
             self.mutex.acquire()
             self.file_handle.write(str(time.time()))
-            for user in t:
-                if t[user]:
+            for (user,mac) in self.users:
+                if (user in t) and t[user]:
                     self.file_handle.write(",1")
                 else:
                     self.file_handle.write(",0")
