@@ -1,5 +1,14 @@
 <!DOCTYPE html>
 <html>
+    <!--
+    
+    Current string args:
+        1: Table of temperatures
+        2: Table of user data
+        3: Average temperature
+        4: Is someone home?
+    
+    -->
     <head>
         
         <script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -23,7 +32,26 @@
                 var options = { title: 'Zone Temperatures (F)',
                                 hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
 
-                var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+                var chart = new google.visualization.LineChart(document.getElementById('temp_chart_div'));
+                chart.draw(data, options);
+                
+                data = google.visualization.arrayToDataTable([
+                ['Time', 'Matt', 'Kat', 'Adam'],
+                
+                %s
+                
+                //
+                //  Example:
+                //     time        Matt   Kat   Adam
+                //  ['21:00:55',     1,    1,     1],
+                //  ['21:01:11',     0,    0,     0]
+
+                ]);
+
+                options = { title: 'User Presence',
+                            hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
+
+                chart = new google.visualization.LineChart(document.getElementById('user_chart_div'));
                 chart.draw(data, options);
             }
         </script>
@@ -33,20 +61,26 @@
         <div class="container">
         
             <div class="header">
-                <ul class="nav nav-pills pull-right">
+                <!--ul class="nav nav-pills pull-right">
                     <li class="active"><a href="#">Thermostat</a></li>
-                </ul>
+                </ul-->
                 <h3 class="text-muted">Home Control</h3>
             </div>
 
             <div class="jumbotron">
                 <h2>Thermostat</h2>
                 <p class="lead">Current average temperature is: %s F</p>
-                <div id="chart_div" style="height: 500px;"></div><!--  -->
+                <div id="temp_chart_div" style="height: 500px;"></div><!--  -->
+            </div>
+
+            <div class="jumbotron">
+                <h2>Users</h2>
+                <p class="lead">Someone is home: %s</p>
+                <div id="user_chart_div" style="height: 500px;"></div><!--  -->
             </div>
 
             <div class="footer">
-                <p>&copy; Lamontagne 2014</p>
+                <p>&copy; Lemontongs 2014</p>
             </div>
 
         </div> <!-- /container -->
