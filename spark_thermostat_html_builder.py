@@ -50,7 +50,7 @@ def check_permissions(filename):
 ################################################################################
 if __name__ == '__main__':
     
-    filename = "/var/www/thermostat.html"
+    filename = "/var/www/control/thermostat.html"
     
     check_permissions(filename)
     
