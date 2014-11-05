@@ -13,7 +13,7 @@
         
         <script type="text/javascript" src="https://www.google.com/jsapi"></script>
         <script type="text/javascript">
-            google.load("visualization", "1", {packages:["corechart"]});
+            google.load("visualization", "1", {packages:["corechart","timeline"]});
             google.setOnLoadCallback(drawChart);
             function drawChart() {
                 var data = google.visualization.arrayToDataTable([
@@ -35,24 +35,26 @@
                 var chart = new google.visualization.LineChart(document.getElementById('temp_chart_div'));
                 chart.draw(data, options);
                 
-                data = google.visualization.arrayToDataTable([
-                ['Time', 'Matt', 'Kat', 'Adam'],
+                /////////////////////////////////////////////////////////////////////////////////////////
+
                 
+                var dataTable = new google.visualization.DataTable();
+
+                dataTable.addColumn({ type: 'string', id: 'User' });
+                dataTable.addColumn({ type: 'date', id: 'Start' });
+                dataTable.addColumn({ type: 'date', id: 'End' });
+
+                dataTable.addRows([
+                  
                 %s
-                
-                //
-                //  Example:
-                //     time        Matt   Kat   Adam
-                //  ['21:00:55',     1,    1,     1],
-                //  ['21:01:11',     0,    0,     0]
+                  // [ 'Washington', new Date(1789, 3, 29), new Date(1797, 2, 3) ],
+                  // [ 'Adams',      new Date(1797, 2, 3),  new Date(1801, 2, 3) ],
+                  // [ 'Jefferson',  new Date(1801, 2, 3),  new Date(1809, 2, 3) ]
 
                 ]);
 
-                options = { title: 'User Presence',
-                            hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
-
-                chart = new google.visualization.LineChart(document.getElementById('user_chart_div'));
-                chart.draw(data, options);
+                chart = new google.visualization.Timeline(document.getElementById('user_chart_div'));
+                chart.draw(dataTable);
             }
         </script>
     </head>
@@ -76,7 +78,7 @@
             <div class="jumbotron">
                 <h2>Users</h2>
                 <p class="lead">Someone is home: %s</p>
-                <div id="user_chart_div" style="height: 500px;"></div><!--  -->
+                <div id="user_chart_div"></div>
             </div>
 
             <div class="footer">

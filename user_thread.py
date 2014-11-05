@@ -120,12 +120,14 @@ class User_Thread(Thread):
             if dt < start_time:
                 continue
             
-            time = dt.strftime('%I:%M:%S %p')
-            user1 = row[1]
-            user2 = row[2]
-            user3 = row[3]
+            time = dt.strftime('new Date(0,0,0,%H,%M,%S)')
             
-            return_string += ("        ['%s',  %s, %s, %s],\n" % (time,user1,user2,user3))
+            # Print a line each time a user is seen
+            rownum = 0
+            for (user,mac) in self.users:
+                rownum = rownum + 1
+                if row[rownum] == "1":
+                    return_string += ("        ['%s',  %s, %s],\n" % (user,time,time))
         
         if len(return_string) > 2:
             return_string = return_string[:-2]
