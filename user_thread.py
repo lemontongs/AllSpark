@@ -121,7 +121,7 @@ class User_Thread(Thread):
                 continue
             
             year   = dt.strftime('%Y')
-            month  = str(int(dt.strftime('%m')) + 1) // javascript expects month in 0-11, strftime gives 1-12 
+            month  = str(int(dt.strftime('%m')) + 1) # javascript expects month in 0-11, strftime gives 1-12 
             day    = dt.strftime('%d')
             hour   = dt.strftime('%H')
             minute = dt.strftime('%M')
