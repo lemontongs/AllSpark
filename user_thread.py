@@ -113,15 +113,23 @@ class User_Thread(Thread):
         
         # Build the return string
         return_string = ""
+        
+        # Skip the ones before the start_time
+        start_index = len(userdata)
         for i, row in enumerate(userdata):
-            
-            # Skip the ones before the start_time
             dt = datetime.datetime.fromtimestamp(float(row[0]))
-            if dt < start_time:
-                continue
+            if dt > start_time:
+                start_index = i
+                break
+        
+        # Process the remaining data into a usable structure
+        processed_data = []
+        for i, row in enumerate(userdata[start_index:]):
+            
+            dt = datetime.datetime.fromtimestamp(float(row[0]))
             
             year   = dt.strftime('%Y')
-            month  = str(int(dt.strftime('%m')) + 1) // javascript expects month in 0-11, strftime gives 1-12 
+            month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
             day    = dt.strftime('%d')
             hour   = dt.strftime('%H')
             minute = dt.strftime('%M')
@@ -129,13 +137,42 @@ class User_Thread(Thread):
             
             time = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
             
-            # Print a line each time a user is seen
-            rownum = 0
-            for (user,mac) in self.users:
-                rownum = rownum + 1
-                if row[rownum] == "1":
-                    return_string += ("        ['%s',  %s, %s],\n" % (user,time,time))
+            temp = {}
+            temp["time"] = time
+            for (j,(user,mac)) in enumerate(self.users):
+                temp[user] = (row[j+1] == "1")
+            
+            processed_data.append( temp )
         
+        # Save the first state
+        previous = processed_data[0]
+        start_times = {} 
+        for (user,mac) in self.users:
+            if processed_data[0][user]:
+                start_times[user] = processed_data[0]["time"]
+            else:
+                start_times[user] = None
+        
+        # Go through the processed data and write out a string whenever the user
+        # is no longer present.
+        for i, row in enumerate(processed_data[1:]):
+            for (user,mac) in self.users:
+                if start_times[user] == None and processed_data[i][user]:
+                    start_times[user] = processed_data[i]["time"]
+                if start_times[user] != None and not processed_data[i][user]:
+                    # write a string
+                    return_string += ("['%s',  %s, %s],\n" % (user,  \
+                                                              start_times[user],  \
+                                                              processed_data[i]["time"]))
+                    # set start time to None
+                    start_times[user] = None
+        
+        for (user,mac) in self.users:
+            if start_times[user] != None:
+                return_string += ("['%s',  %s, %s],\n" % (user,  \
+                                                          start_times[user],  \
+                                                          processed_data[-1]["time"]))
+        # Remove the trailing comma and return line    
         if len(return_string) > 2:
             return_string = return_string[:-2]
         
