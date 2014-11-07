@@ -120,7 +120,14 @@ class User_Thread(Thread):
             if dt < start_time:
                 continue
             
-            time = dt.strftime('new Date(0,0,0,%H,%M,%S)')
+            year   = dt.strftime('%Y')
+            month  = str(int(dt.strftime('%m')) + 1) // javascript expects month in 0-11, strftime gives 1-12 
+            day    = dt.strftime('%d')
+            hour   = dt.strftime('%H')
+            minute = dt.strftime('%M')
+            second = dt.strftime('%S')
+            
+            time = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
             
             # Print a line each time a user is seen
             rownum = 0
