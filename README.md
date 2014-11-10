@@ -1,7 +1,7 @@
 AllSpark
 ========
 
-HTTP home control page generation
+Home control HTML web page generator
 
 Dependencies:
   apt-get install arp-scan
