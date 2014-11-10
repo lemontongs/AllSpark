@@ -1,4 +1,5 @@
 import csv
+import os
 import subprocess
 import sys
 import time
@@ -27,18 +28,25 @@ class Temperature_Thread(Thread):
         Thread.__init__(self)
         self.mutex = Lock()
         self.running = False
+        self.initialized = False
         self.filename = filename
         self.device_names = device_names
         self.current_temperature = "0.0"
         try:
-            self.file_handle = open(self.filename, 'r+')
+            self.file_handle = open(self.filename, 'a+')
+            self.file_handle.seek(0,2)
         except:
             print "Failed to open", self.filename, ":", sys.exc_info()[1]
-            return None
+            return
         
-        self.file_handle.seek(0,2)
+        self.initialized = True
         
     def run(self):
+        
+        if not self.initialized:
+            print "Warning: Temperature_Thread started before initialized, not running."
+            return
+        
         self.running = True
         while self.running:
           

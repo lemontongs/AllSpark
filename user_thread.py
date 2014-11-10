@@ -21,21 +21,27 @@ from threading import Thread, Lock
 class User_Thread(Thread):
     def __init__(self, filename, users):
         Thread.__init__(self)
-        
+        self.initialized = False
         self.mutex = Lock()
         self.running = False
         self.filename = filename
         self.users = users
         self.is_someone_home = True
         try:
-            self.file_handle = open(self.filename, 'r+')
+            self.file_handle = open(self.filename, 'a+')
+            self.file_handle.seek(0,2)
         except:
             print "Failed to open", self.filename, ":", sys.exc_info()[1]
+            return
         
-        self.file_handle.seek(0,2)
+        self.initialized = True
         
     def run(self):
-    
+        
+        if not self.initialized:
+            print "Warning: start called before initialized, not running"
+            return
+        
         if os.geteuid() != 0:
             print "ERROR: Running in non-privaleged mode, User_Thread not running" 
             return
@@ -177,17 +183,4 @@ class User_Thread(Thread):
             return_string = return_string[:-2]
         
         return return_string
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             
