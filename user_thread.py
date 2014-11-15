@@ -67,27 +67,22 @@ class User_Thread(Thread):
                 if mac_addr in result:
                     last_seen[user] = time.time()
                     t[user] = True
-
-            #
-            # Check if a user has been seen in the last 10 minutes
-            #
-            self.is_someone_home = False
-            for (user,mac_addr) in self.users:
-                if (time.time() - last_seen[user]) < 600:
-                    self.is_someone_home = True
-
+            
             #
             # Write the collected data to file
             #
             self.mutex.acquire()
             self.file_handle.write(str(time.time()))
+            is_someone_home = False
             for (user,mac) in self.users:
-                if (user in t) and t[user]:
+                if (time.time() - last_seen[user]) < 600:
+                    is_someone_home = True
                     self.file_handle.write(",1")
                 else:
                     self.file_handle.write(",0")
             self.file_handle.write("\n")
             self.file_handle.flush()
+            self.is_someone_home = is_someone_home
             self.mutex.release()
             time.sleep(10)
   
@@ -150,6 +145,9 @@ class User_Thread(Thread):
             
             processed_data.append( temp )
         
+        if len(processed_data) == 0:
+            return "[] // None available"
+        
         # Save the first state
         previous = processed_data[0]
         start_times = {} 
@@ -183,4 +181,15 @@ class User_Thread(Thread):
             return_string = return_string[:-2]
         
         return return_string
-            
+
+if __name__ == "__main__":
+    
+    import pprint
+
+    user1 = User_Thread(filename = "user_state.csv", 
+                        users = [("Matt","xx:xx:xx:xx:xx:xx")])
+
+
+    print user1.get_history()
+
+
