@@ -103,7 +103,7 @@ if __name__ == '__main__':
     ############################################################################
     while True:
         try:
-            build_html_file(filename, thermostat1, user1)
+            build_html_file(filename, thermostat, user)
             os.system("/home/mlamonta/bin/blink1-tool -q --hsb=130,200,50")
             time.sleep(60)
             os.system("/home/mlamonta/bin/blink1-tool -q --off")
