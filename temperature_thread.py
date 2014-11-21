@@ -16,13 +16,6 @@ from threading import Thread, Lock
 #    t1.start()
 #
 
-def isfloat(string):
-    try:
-        float(string)
-        return True
-    except ValueError:
-        return False
-
 class Temperature_Thread(Thread):
     def __init__(self, filename, device_names):
         Thread.__init__(self)
@@ -31,7 +24,12 @@ class Temperature_Thread(Thread):
         self.initialized = False
         self.filename = filename
         self.device_names = device_names
-        self.current_temperature = 0.0
+        self.current_temps = {}
+        self.current_set_points = {}
+        for device in self.device_names:
+             self.current_temps[device] = 0.0
+             self.current_set_points[device] = 60.0 # BAD!!!! load from a file!!!!!
+        self.current_average_temperature = 0.0
         try:
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
@@ -62,13 +60,14 @@ class Temperature_Thread(Thread):
               
               try:
                 x = x + float(t[device])
+                self.current_temps[device] = float(t[device])
                 count = count + 1
               except:
                 print "Error getting temperature ("+device+"), got: \"" + t[device] + "\" setting to null"
                 t[device] = "null"
           
           if count > 0:
-            self.current_temperature = x / count
+            self.current_average_temperature = x / count
           
           self.mutex.acquire()
           self.file_handle.write(str(time.time()))
@@ -83,8 +82,20 @@ class Temperature_Thread(Thread):
         self.running = False
         self.file_handle.close()
     
-    def get_temp(self):
-        return self.current_temperature
+    def get_average_temp(self):
+        return self.current_average_temperature
+    
+    def get_current_device_temp(self, device):
+        if device in self.current_temps:
+            return self.current_temps[device]
+        print "WARNING:",device,"not found" 
+        return 0.0
+    
+    def get_current_device_set_point(self, device):
+        if device in self.current_set_points:
+            return self.current_set_points[device]
+        print "WARNING:",device,"not found"
+        return 60.0
     
     def get_history(self, days=1, seconds=0):
         

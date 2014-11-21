@@ -3,10 +3,16 @@
     <!--
     
     Current string args:
-        1: Table of temperatures (string)
-        2: Table of user data    (string)
-        3: Average temperature   (float)
-        4: Is someone home?      (string)
+        1: Table of temperatures        (string)
+        2: Table of user data           (string)
+        3: Average temperature          (float)
+        4: Main current temperature     (float)
+        5: Main current set point       (float)
+        6: Top current temperature      (float)
+        7: Top current set point        (float)
+        8: Basement current temperature (float)
+        9: Basement current set point   (float)
+       10: Is someone home?             (string)
     
     -->
     <head>
@@ -20,7 +26,7 @@
                 var data = google.visualization.arrayToDataTable([
                 ['Time', 'Main Floor', 'Top Floor', 'Basement'],
                 
-                %s
+                %s                                                                                   //   TEMP HISTORY DATA
                 
 
                 ]);
@@ -42,7 +48,7 @@
 
                 dataTable.addRows([
                   
-                %s
+                %s                                                                                   //   USER IS HOME DATA
 
                 ]);
 
@@ -64,27 +70,86 @@
 
             <div class="jumbotron">
                 <h2>Thermostat</h2>
-                <p class="lead">Current average temperature is: %.1f F</p>
-                <div id="temp_chart_div" style="height: 500px;"></div>
-                <div>
-                    <input id="temp_control_div" type="text" value="50" name="demo">
-                    <script>
-                    $("input[name='temp_control_div']").TouchSpin({
-                        min: 0,
-                        max: 100,
-                        step: 0.1,
-                        decimals: 2,
-                        boostat: 5,
-                        maxboostedstep: 10,
-                        postfix: 'F'
-                    });
-                    </script>
+                <p class="lead">Current average temperature is: %.1f F</p>                             <!-- CURR AVERAGE TEMP -->
+                <div class="row">
+                     <div class="col-md-12">
+                        <div id="temp_chart_div" style="height: 500px;"></div>
+                     </div>
+                </div>
+                <br>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>Top floor is: %.1f F</p>                                                   <!-- TOP FLOOR CURR TEMP -->
+                    </div>
+                    <div class="col-md-2">
+                        <p>Set point: </p>
+                    </div>
+                    <div class="col-md-4">
+                        <input name="top_temp_control_div" type="text" value="%s">                    <!-- TOP FLOOR SET POINT -->
+                        <script>
+                        $("input[name='top_temp_control_div']").TouchSpin({
+                            min: 50,
+                            max: 80,
+                            step: 0.1,
+                            decimals: 2,
+                            boostat: 5,
+                            maxboostedstep: 10,
+                            postfix: 'F'
+                        });
+                        </script>
+                    </div>
+                </div>
+                <br>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>Main floor is: %.1f F</p>                                                   <!-- MAIN FLOOR CURR TEMP -->
+                    </div>
+                    <div class="col-md-2">
+                        <p>Set point: </p>
+                    </div>
+                    <div class="col-md-4">
+                        <input name="main_temp_control_div" type="text" value="%s">                    <!-- MAIN FLOOR SET POINT -->
+                        <script>
+                        $("input[name='main_temp_control_div']").TouchSpin({
+                            min: 50,
+                            max: 80,
+                            step: 0.1,
+                            decimals: 2,
+                            boostat: 5,
+                            maxboostedstep: 10,
+                            postfix: 'F'
+                        });
+                        </script>
+                    </div>
+                </div>
+                <br>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>Basement is: %.1f F</p>                                                      <!-- BASEMENT CURR TEMP -->
+                    </div>
+                    <div class="col-md-2">
+                        <p>Set point: </p>
+                    </div>
+                    <div class="col-md-4">
+                        <input name="basement_temp_control_div" type="text" value="%s">                 <!-- BASEMENT SET POINT -->
+                        <script>
+                        $("input[name='basement_temp_control_div']").TouchSpin({
+                            min: 50,
+                            max: 80,
+                            step: 0.1,
+                            decimals: 2,
+                            boostat: 5,
+                            maxboostedstep: 10,
+                            postfix: 'F'
+                        });
+                        </script>
+                    </div>
                 </div>
             </div>
 
             <div class="jumbotron">
                 <h2>Users</h2>
-                <p class="lead">Someone is home: %s</p>
+                <p class="lead">Someone is home: %s</p>                                                   <!-- SOMEONE IS HOME -->
                 <div id="user_chart_div"></div>
             </div>
 

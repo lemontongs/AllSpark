@@ -22,9 +22,15 @@ def build_html_file(filename, thermostat, user_thread):
         template_contents = f.read()
         f.close()
     
-    content = template_contents % (thermostat.get_history(),  \
+    content = template_contents % (thermostat.get_history(), \
                                    user_thread.get_history(), \
-                                   thermostat.get_temp(),     \
+                                   thermostat.get_average_temp(), \
+                                   thermostat.get_current_device_temp("top_floor_temp"), \
+                                   thermostat.get_current_device_set_point("top_floor_temp"), \
+                                   thermostat.get_current_device_temp("main_floor_temp"), \
+                                   thermostat.get_current_device_set_point("main_floor_temp"), \
+                                   thermostat.get_current_device_temp("basement_floor_temp"), \
+                                   thermostat.get_current_device_set_point("basement_floor_temp"), \
                                    user_thread.get_is_someone_home())
     
     if DEBUG:
