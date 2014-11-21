@@ -9,20 +9,22 @@ import user_thread
 
 DEBUG = False
 
+template_contents = None
+
 def build_html_file(filename, thermostat, user_thread):
 
     if DEBUG:
         print "building file"
     
-    f = open("thermostat_template.html", "r")
-    content = f.read()
-    f.close()
+    if template_contents == None:
+        f = open("thermostat_template.html", "r")
+        template_contents = f.read()
+        f.close()
     
-    content = content % (thermostat.get_history(),  \
-                         user_thread.get_history(), \
-                         thermostat.get_temp(),     \
-                         user_thread.get_is_someone_home())
-    
+    content = template_contents % (thermostat.get_history(),  \
+                                   user_thread.get_history(), \
+                                   thermostat.get_temp(),     \
+                                   user_thread.get_is_someone_home())
     
     if DEBUG:
         print "writing file"
@@ -54,7 +56,8 @@ def check_permissions(filename):
 ################################################################################
 if __name__ == '__main__':
     
-    filename = "/var/www/control/index.html"
+    #filename = "/var/www/control/index.html"
+    filename = "data/index.html"
     
     if len(sys.argv) == 2:
         if "-h" == sys.argv[1]:
@@ -73,7 +76,7 @@ if __name__ == '__main__':
     # Thermostat Thread
     ############################################################################
     thermostat = \
-        temperature_thread.Temperature_Thread(filename="floor_temps.csv", 
+        temperature_thread.Temperature_Thread(filename="data/floor_temps.csv", 
                                               device_names=["main_floor_temp",
                                                             "top_floor_temp",
                                                             "basement_floor_temp"])
@@ -87,7 +90,7 @@ if __name__ == '__main__':
     # User Thread
     ############################################################################
     user = \
-        user_thread.User_Thread(filename = "user_state.csv", 
+        user_thread.User_Thread(filename = "data/user_state.csv", 
                                 users = [("Matt","bc:f5:ac:f4:35:95"),
                                          ("Kat", "58:a2:b5:e9:2b:fc"),
                                          ("Adam","24:e3:14:d2:f8:b2")])
