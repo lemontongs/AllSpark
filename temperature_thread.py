@@ -40,7 +40,10 @@ class Temperature_Thread(Thread):
             return
         
         self.initialized = True
-        
+    
+    def isInitialized(self):
+        return self.initialized
+    
     def run(self):
         
         if not self.initialized:
@@ -86,28 +89,19 @@ class Temperature_Thread(Thread):
     def get_history(self, days=1, seconds=0):
         
         # start_time is "now" minus days and seconds
-        # only this much data willl be shown
+        # only this much data will be shown
         start_time = datetime.datetime.now() - datetime.timedelta(days,seconds)
         
         # Load the data from the file
         self.mutex.acquire()
         file_handle = open(self.filename, 'r')
         csvreader = csv.reader(file_handle)
-        lines = 0
         tempdata = []
-        for row in csvreader:
-            #if len(row) != 4:
-            #    continue
-            #if not isfloat(row[0]):
-            #        continue
-            #if not isfloat(row[1]):
-            #        continue
-            #if not isfloat(row[2]):
-            #        continue
-            #if not isfloat(row[3]):
-            #        continue
-            tempdata.append(row)
-            lines += 1
+        try:
+            for row in csvreader:
+                tempdata.append(row)
+        except csv.Error, e:
+            print 'ERROR: file %s, line %d: %s' % (self.filename, csvreader.line_num, e)
         self.mutex.release()
         
         # Build the return string

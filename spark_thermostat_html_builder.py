@@ -66,34 +66,37 @@ if __name__ == '__main__':
     
     check_permissions(filename)
     
+    if not os.path.exists("data"):
+        os.makedirs("data")
+    
     ############################################################################
-    # Thermostat Threat
+    # Thermostat Thread
     ############################################################################
-    thermostat1 = \
+    thermostat = \
         temperature_thread.Temperature_Thread(filename="floor_temps.csv", 
                                               device_names=["main_floor_temp",
                                                             "top_floor_temp",
                                                             "basement_floor_temp"])
-    if thermostat1 == None:
+    if not thermostat.isInitialized():
         print "Error creating temperature thread"
         sys.exit(1)
     
-    thermostat1.start()
+    thermostat.start()
 
     ############################################################################
-    # User Threat
+    # User Thread
     ############################################################################
-    user1 = \
+    user = \
         user_thread.User_Thread(filename = "user_state.csv", 
                                 users = [("Matt","bc:f5:ac:f4:35:95"),
                                          ("Kat", "58:a2:b5:e9:2b:fc"),
                                          ("Adam","24:e3:14:d2:f8:b2")])
-    if user1 == None:
+    if not user.isInitialized():
         print "Error creating user thread"
-        thermostat1.stop()
+        thermostat.stop()
         sys.exit(1)
     
-    user1.start()
+    user.start()
     
     ############################################################################
     # Main loop
@@ -105,8 +108,8 @@ if __name__ == '__main__':
             time.sleep(60)
             os.system("/home/mlamonta/bin/blink1-tool -q --off")
         except KeyboardInterrupt:
-            thermostat1.stop()
-            user1.stop()
+            thermostat.stop()
+            user.stop()
             os._exit(0)
         
 

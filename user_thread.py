@@ -10,11 +10,9 @@ from threading import Thread, Lock
 #
 # Example usage:
 #
-#  t1 = user_thread.User_Thread(filename = "user_state.csv", 
-#                               users = [("Matt","bc:f5:ac:f4:35:95"),
-#                                        ("Kat", "bc:f5:ac:f4:35:95"),
-#                                        ("Adam","bc:f5:ac:f4:35:95")])
-#  if t1 != None:
+#  t = user_thread.User_Thread(filename = "user_state.csv", 
+#                              users = [("Matt","xx:xx:xx:xx:xx:xx")])
+#  if t.isInitialized():
 #    t1.start()
 #
 
@@ -36,6 +34,9 @@ class User_Thread(Thread):
         
         self.initialized = True
         
+    def isInitialized(self):
+        return self.initialized
+    
     def run(self):
         
         if not self.initialized:
@@ -184,12 +185,10 @@ class User_Thread(Thread):
 
 if __name__ == "__main__":
     
-    import pprint
-
-    user1 = User_Thread(filename = "user_state.csv", 
-                        users = [("Matt","xx:xx:xx:xx:xx:xx")])
+    user = User_Thread(filename = "user_state.csv", 
+                       users = [("Matt","xx:xx:xx:xx:xx:xx")])
 
 
-    print user1.get_history()
+    print user.get_history()
 
 
