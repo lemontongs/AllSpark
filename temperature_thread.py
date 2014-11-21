@@ -31,7 +31,7 @@ class Temperature_Thread(Thread):
         self.initialized = False
         self.filename = filename
         self.device_names = device_names
-        self.current_temperature = "0.0"
+        self.current_temperature = 0.0
         try:
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
