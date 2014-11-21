@@ -12,7 +12,8 @@ DEBUG = False
 template_contents = None
 
 def build_html_file(filename, thermostat, user_thread):
-
+    global template_contents
+    
     if DEBUG:
         print "building file"
     
