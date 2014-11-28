@@ -6,6 +6,7 @@ import sys
 import time
 import temperature_thread
 import user_thread
+import memory_thread
 
 DEBUG = False
 
@@ -109,6 +110,19 @@ if __name__ == '__main__':
     user.start()
     
     ############################################################################
+    # Memory Thread
+    ############################################################################
+    mem = memory_thread.Memory_Thread(filename = "data/mem_usage.csv")
+    
+    if not mem.isInitialized():
+        print "Error creating memory thread"
+        thermostat.stop()
+        user.stop()
+        sys.exit(1)
+    
+    mem.start()
+    
+    ############################################################################
     # Main loop
     ############################################################################
     while True:
@@ -120,6 +134,7 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             thermostat.stop()
             user.stop()
+            mem.stop()
             os._exit(0)
         
 

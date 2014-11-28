@@ -76,7 +76,7 @@ class Temperature_Thread(Thread):
           self.file_handle.write("\n")
           self.file_handle.flush()
           self.mutex.release()
-          time.sleep(10)
+          time.sleep(120)
   
     def stop(self):
         self.running = False

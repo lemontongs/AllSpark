@@ -20,8 +20,41 @@
         <script type="text/javascript" src="../jquery.bootstrap-touchspin.min.js"></script>
         <script type="text/javascript" src="https://www.google.com/jsapi"></script>
         <script type="text/javascript">
+            
             google.load("visualization", "1", {packages:["corechart","timeline"]});
             google.setOnLoadCallback(drawChart);
+            
+            function drawMemData(data)
+            {
+                var rows = data.split("\n");
+                
+                var result = [['Time','Memory Usage (percent)']];
+                
+                for ( var i = 0; i < rows.length; i++)
+                {
+                    var row = rows[i];
+                    var items = row.split(",");
+                    if (items.length != 2)
+                        continue;
+                    var time = items[0];
+                    var mem_usage = items[1];
+                    
+                    var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+                    d.setUTCSeconds(parseInt(time));
+                    
+                    result.push([d, parseFloat(mem_usage)]);
+                }
+                
+                var data = google.visualization.arrayToDataTable(result);
+                var options = { title: 'Memory Usage' };
+                var chart = new google.visualization.LineChart(document.getElementById('mem_chart_div'));
+                chart.draw(data, options);
+            }
+            
+            $(document).ready(function () {
+                $.get("mem_usage.csv", function (data) { drawMemData(data); });
+            });
+            
             function drawChart() {
                 var data = google.visualization.arrayToDataTable([
                 ['Time', 'Main Floor', 'Top Floor', 'Basement'],
@@ -151,6 +184,11 @@
                 <h2>Users</h2>
                 <p class="lead">Someone is home: %s</p>                                                   <!-- SOMEONE IS HOME -->
                 <div id="user_chart_div"></div>
+            </div>
+
+            <div class="jumbotron">
+                <h2>Memory Usage</h2>
+                <div id="mem_chart_div"></div>
             </div>
 
             <div class="footer">

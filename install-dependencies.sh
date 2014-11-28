@@ -9,6 +9,9 @@ fi
 # arp-scan
 apt-get -y install arp-scan
 
+# python psutil
+apt-get -y install python-psutil
+
 # python zeroMQ libraries
 apt-get -y install python-zmq
 apt-get -y install python-pip
