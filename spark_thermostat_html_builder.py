@@ -23,8 +23,7 @@ def build_html_file(filename, thermostat, user_thread):
         template_contents = f.read()
         f.close()
     
-    content = template_contents % (thermostat.get_history(), \
-                                   user_thread.get_history(), \
+    content = template_contents % (user_thread.get_history(), \
                                    thermostat.get_average_temp(), \
                                    thermostat.get_current_device_temp("top_floor_temp"), \
                                    thermostat.get_current_device_set_point("top_floor_temp"), \

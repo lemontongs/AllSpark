@@ -63,28 +63,30 @@ class User_Thread(Thread):
             #
             result = subprocess.Popen(["arp-scan","-l"], stdout=subprocess.PIPE).stdout.read()
             t = {}
+            log_this_time = False
             for (user,mac_addr) in self.users:
                 t[user] = False
                 if mac_addr in result:
                     last_seen[user] = time.time()
                     t[user] = True
+                    log_this_time = True
             
             #
             # Write the collected data to file
             #
-            self.mutex.acquire()
-            self.file_handle.write(str(time.time()))
-            is_someone_home = False
-            for (user,mac) in self.users:
-                if (time.time() - last_seen[user]) < 600:
-                    is_someone_home = True
-                    self.file_handle.write(",1")
-                else:
-                    self.file_handle.write(",0")
-            self.file_handle.write("\n")
-            self.file_handle.flush()
-            self.is_someone_home = is_someone_home
-            self.mutex.release()
+            if log_this_time:
+                self.mutex.acquire()
+                self.file_handle.write(str(time.time()))
+                is_someone_home = False
+                for (user,mac) in self.users:
+                    if (time.time() - last_seen[user]) < 600:
+                        is_someone_home = True
+                        self.file_handle.write(","+user)
+                self.file_handle.write("\n")
+                self.file_handle.flush()
+                self.is_someone_home = is_someone_home
+                self.mutex.release()
+            
             time.sleep(10)
   
     def stop(self):
@@ -142,7 +144,8 @@ class User_Thread(Thread):
             temp = {}
             temp["time"] = time
             for (j,(user,mac)) in enumerate(self.users):
-                temp[user] = (row[j+1] == "1")
+                if user in row:
+                    temp[user] = "1"
             
             processed_data.append( temp )
         
@@ -153,7 +156,7 @@ class User_Thread(Thread):
         previous = processed_data[0]
         start_times = {} 
         for (user,mac) in self.users:
-            if processed_data[0][user]:
+            if user in processed_data[0]:
                 start_times[user] = processed_data[0]["time"]
             else:
                 start_times[user] = None
@@ -162,9 +165,9 @@ class User_Thread(Thread):
         # is no longer present.
         for i, row in enumerate(processed_data[1:]):
             for (user,mac) in self.users:
-                if start_times[user] == None and processed_data[i][user]:
+                if start_times[user] == None and (user in processed_data[i]):
                     start_times[user] = processed_data[i]["time"]
-                if start_times[user] != None and not processed_data[i][user]:
+                if start_times[user] != None and (not user in processed_data[i]):
                     # write a string
                     return_string += ("['%s',  %s, %s],\n" % (user,  \
                                                               start_times[user],  \

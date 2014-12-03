@@ -3,16 +3,15 @@
     <!--
     
     Current string args:
-        1: Table of temperatures        (string)
-        2: Table of user data           (string)
-        3: Average temperature          (float)
-        4: Main current temperature     (float)
-        5: Main current set point       (float)
-        6: Top current temperature      (float)
-        7: Top current set point        (float)
-        8: Basement current temperature (float)
-        9: Basement current set point   (float)
-       10: Is someone home?             (string)
+        1: Table of user data           (string)
+        2: Average temperature          (float)
+        3: Main current temperature     (float)
+        4: Main current set point       (float)
+        5: Top current temperature      (float)
+        6: Top current set point        (float)
+        7: Basement current temperature (float)
+        8: Basement current set point   (float)
+        9: Is someone home?             (string)
     
     -->
     <head>
@@ -22,7 +21,47 @@
         <script type="text/javascript">
             
             google.load("visualization", "1", {packages:["corechart","timeline"]});
-            google.setOnLoadCallback(drawChart);
+            
+            function drawTempData(data)
+            {
+                var rows = data.split("\n");
+                
+                var result = [['Time', 'Main Floor', 'Top Floor', 'Basement']];
+                
+                for ( var i = 0; i < rows.length; i++)
+                {
+                    var row = rows[i];
+                    var items = row.split(",");
+                    if (items.length != 4)
+                        continue;
+                    
+                    var time = items[0];
+                    
+                    var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+                    d.setUTCSeconds(parseInt(time));
+                    
+                    
+                    var temps = [];
+                    temps.push(d);
+                    for (var t = 1; t < items.length; t++ )
+                    {
+                        temps[t] = parseFloat(items[t]);
+                        if (temps[t] == NaN)
+                        {
+                            temps[t] = null;
+                        }
+                    }
+                    
+                    result.push(temps);
+                }
+                
+                var data = google.visualization.arrayToDataTable(result);
+                var options = { title: 'Zone Temperatures (F)',
+                                hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
+
+                var chart = new google.visualization.LineChart(document.getElementById('temp_chart_div'));
+                chart.draw(data, options);
+            }
             
             function drawMemData(data)
             {
@@ -51,28 +90,7 @@
                 chart.draw(data, options);
             }
             
-            $(document).ready(function () {
-                $.get("mem_usage.csv", function (data) { drawMemData(data); });
-            });
-            
-            function drawChart() {
-                var data = google.visualization.arrayToDataTable([
-                ['Time', 'Main Floor', 'Top Floor', 'Basement'],
-                
-                %s                                                                                   //   TEMP HISTORY DATA
-                
-
-                ]);
-
-                var options = { title: 'Zone Temperatures (F)',
-                                hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
-
-                var chart = new google.visualization.LineChart(document.getElementById('temp_chart_div'));
-                chart.draw(data, options);
-                
-                /////////////////////////////////////////////////////////////////////////////////////////
-
-                
+            function drawUserData() {
                 var dataTable = new google.visualization.DataTable();
 
                 dataTable.addColumn({ type: 'string', id: 'User' });
@@ -88,6 +106,14 @@
                 chart = new google.visualization.Timeline(document.getElementById('user_chart_div'));
                 chart.draw(dataTable);
             }
+            
+            
+            $(document).ready(function () {
+                $.get("floor_temps.csv", function (data) { drawTempData(data); });
+                $.get("mem_usage.csv",   function (data) { drawMemData(data); });
+                drawUserData();
+            });
+            
         </script>
     </head>
     <body>
