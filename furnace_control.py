@@ -6,6 +6,7 @@ from threading import Thread, Lock
 import os
 import RPi.GPIO as GPIO
 
+GPIO.setwarnings(False)
 
 class Furnace_Control(Thread):
     def __init__(self, zones): # example zones:  [ {'name':'top', 'pin':18, 'get_temp':get_temp} ]
@@ -36,10 +37,16 @@ class Furnace_Control(Thread):
         self.running = False
         self.initialized = True
 
-    def close(self):
+    def isInitialized(self):
+        return self.initialized
+
+    def stop(self):
         if self.initialized:
             self.initialized = False
             self.running = False
+            time.sleep(2)
+            for i, zone in enumerate(self.zones):
+                self.off(zone['pin'])
             GPIO.cleanup()
 
     def on(self, pin):
@@ -49,6 +56,16 @@ class Furnace_Control(Thread):
     def off(self, pin):
         if self.initialized:
             GPIO.output(pin,False)
+
+    def get_set_point(self, zone_name):
+        found = False
+        for i, zone in enumerate(self.zones):
+            if zone['name'] == zone_name:
+                found = True
+                return zone['set_point']
+        if not found:
+             print "Warning:", zone_name, "not found"
+        return 60.0
 
     def set_point(self, zone_name, set_point):
         found = False
@@ -65,17 +82,28 @@ class Furnace_Control(Thread):
             print "Warning: started before initialized, not running"
             return
         
+        f = open("logs/furnace_log","a")
+
         self.running = True
         while self.running:
-            temp = self.zones[0]['get_temp']()
-            s = ""
-            if temp < self.zones[0]['set_point']:
-                s = s + "heating"
-            if temp > self.zones[0]['set_point']:
-                s = s + "cooling"
+            for i, zone in enumerate(self.zones):
+                temp = zone['get_temp']()
+                
+                if temp == 0.0:
+                    continue
+                
+                s = ""
+                if temp < zone['set_point']:
+                    s = s + "heating"
+                    self.on(zone['pin'])
+                if temp > zone['set_point']:
+                    s = s + "cooling"
+                    self.off(zone['pin'])
             
-            print "Current:", temp, s, "set_point:", self.zones[0]['set_point']
-            time.sleep(0.5)
+                f.write("Current: "+str(temp)+" "+s+" set_point: "+str(zone['set_point'])+"\n")
+                f.flush()
+            time.sleep(60)
+        f.close()
 
 #
 # MAIN
@@ -92,7 +120,9 @@ if __name__ == "__main__":
         temp = temp + modifier
         return temp
     
-    zones = [ {'name':'top',  'pin':18, 'get_temp':get_temp} ]
+    zones = [ {'name':'top',     'pin':18, 'get_temp':get_temp},
+              {'name':'main',    'pin':23, 'get_temp':get_temp},
+              {'name':'basement','pin':24, 'get_temp':get_temp} ]
 
     fc = Furnace_Control(zones)
     
@@ -108,5 +138,5 @@ if __name__ == "__main__":
 
     time.sleep(20)
     
-    fc.close()
+    fc.stop()
 

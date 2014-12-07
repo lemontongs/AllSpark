@@ -20,16 +20,17 @@ class Temperature_Thread(Thread):
     def __init__(self, filename, device_names):
         Thread.__init__(self)
         self.mutex = Lock()
+        self.run_lock = Lock()
         self.running = False
         self.initialized = False
         self.filename = filename
         self.device_names = device_names
         self.current_temps = {}
-        self.current_set_points = {}
+
         for device in self.device_names:
              self.current_temps[device] = 0.0
-             self.current_set_points[device] = 60.0 # BAD!!!! load from a file!!!!!
         self.current_average_temperature = 0.0
+
         try:
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
@@ -48,38 +49,46 @@ class Temperature_Thread(Thread):
             print "Warning: Temperature_Thread started before initialized, not running."
             return
         
-        self.running = True
+        self.running = self.run_lock.acquire()
         while self.running:
           
-          t = {}
-          x = 0.0
-          count = 0
-          for device in self.device_names:
+            t = {}
+            x = 0.0
+            count = 0
+            for device in self.device_names:
               
-              t[device] = subprocess.Popen(["spark","get",device,"temperature"], stdout=subprocess.PIPE).stdout.read().strip()
+                t[device] = subprocess.Popen(["spark","get",device,"temperature"], stdout=subprocess.PIPE).stdout.read().strip()
               
-              try:
-                x = x + float(t[device])
-                self.current_temps[device] = float(t[device])
-                count = count + 1
-              except:
-                print "Error getting temperature ("+device+"), got: \"" + t[device] + "\" setting to null"
-                t[device] = "null"
+                try:
+                    x = x + float(t[device])
+                    self.current_temps[device] = float(t[device])
+                    count = count + 1
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except:
+                    print "Error getting temperature ("+device+"), got: \"" + t[device] + "\" setting to null"
+                    t[device] = "null"
           
-          if count > 0:
-            self.current_average_temperature = x / count
+            if count > 0:
+                self.current_average_temperature = x / count
           
-          self.mutex.acquire()
-          self.file_handle.write(str(time.time()))
-          for device in self.device_names:
-            self.file_handle.write("," + t[device])
-          self.file_handle.write("\n")
-          self.file_handle.flush()
-          self.mutex.release()
-          time.sleep(120)
+            self.mutex.acquire()
+            self.file_handle.write(str(time.time()))
+            for device in self.device_names:
+                self.file_handle.write("," + t[device])
+            self.file_handle.write("\n")
+            self.file_handle.flush()
+            self.mutex.release()
+            
+            for i in range(120):
+                if self.running:
+                    time.sleep(1)
+        
+        self.run_lock.release()
   
     def stop(self):
         self.running = False
+        self.run_lock.acquire() # Wait for the thread to stop
         self.file_handle.close()
     
     def get_average_temp(self):
@@ -90,12 +99,6 @@ class Temperature_Thread(Thread):
             return self.current_temps[device]
         print "WARNING:",device,"not found" 
         return 0.0
-    
-    def get_current_device_set_point(self, device):
-        if device in self.current_set_points:
-            return self.current_set_points[device]
-        print "WARNING:",device,"not found"
-        return 60.0
     
     def get_history(self, days=1, seconds=0):
         

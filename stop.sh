@@ -17,3 +17,5 @@ echo $spark_pid
 
 kill -9 $spark_pid
 
+rm *.pyc
+

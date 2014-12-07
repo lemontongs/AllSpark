@@ -71,20 +71,19 @@ class User_Thread(Thread):
                     t[user] = True
                     log_this_time = True
             
+            self.someone_is_home = log_this_time
+            
             #
             # Write the collected data to file
             #
             if log_this_time:
                 self.mutex.acquire()
                 self.file_handle.write(str(time.time()))
-                is_someone_home = False
                 for (user,mac) in self.users:
                     if (time.time() - last_seen[user]) < 600:
-                        is_someone_home = True
                         self.file_handle.write(","+user)
                 self.file_handle.write("\n")
                 self.file_handle.flush()
-                self.is_someone_home = is_someone_home
                 self.mutex.release()
             
             time.sleep(10)
