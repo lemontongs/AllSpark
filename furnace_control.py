@@ -67,6 +67,13 @@ class Furnace_Control(Thread):
              print "Warning:", zone_name, "not found"
         return 60.0
 
+    def parse_set_point_message(self, msg):
+        if len(msg.split(',')) != 3:
+            print "Error parsing set_point message"
+            return
+        
+        self.set_point(msg.split(',')[1], float(msg.split(',')[2]))
+
     def set_point(self, zone_name, set_point):
         found = False
         for i, zone in enumerate(self.zones):

@@ -5,6 +5,7 @@ import os
 import sys
 import signal
 import time
+import comms_thread
 import temperature_thread
 import user_thread
 import memory_thread
@@ -160,6 +161,24 @@ if __name__ == '__main__':
         furnace_ctrl.set_point(device, initial_set_point)
     
     furnace_ctrl.start()
+
+    ############################################################################
+    # Comms Thread
+    ############################################################################
+    
+    comms = comms_thread.Comms_Thread()
+
+    if not comms.isInitialized():
+        print "Error creating comms thread"
+        thermostat.stop()
+        user.stop()
+        mem.stop()
+        furnace_ctrl.stop()
+        sys.exit(1)
+
+    comms.register_callback("set_point", furnace_ctrl.parse_set_point_message)
+    comms.start()
+    
     
     ############################################################################
     # Main loop
