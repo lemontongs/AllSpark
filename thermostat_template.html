@@ -40,6 +40,12 @@
                     var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
                     d.setUTCSeconds(parseInt(time));
                     
+                    var now = new Date();
+                    var days = (now - d)/(1000*60*60*24);
+                    if (days > 1.0)
+                    {
+                        continue;
+                    }
                     
                     var temps = [];
                     temps.push(d);
@@ -56,8 +62,8 @@
                 }
                 
                 var data = google.visualization.arrayToDataTable(result);
-                var options = { title: 'Zone Temperatures (F)',
-                                hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
+                var options = { title: 'Zone Temperatures (F)' };//,
+                             //   hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
 
                 var chart = new google.visualization.LineChart(document.getElementById('temp_chart_div'));
                 chart.draw(data, options);
@@ -80,6 +86,13 @@
                     
                     var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
                     d.setUTCSeconds(parseInt(time));
+                    
+                    var now = new Date();
+                    var days = (now - d)/(1000*60*60*24);
+                    if (days > 1.0)
+                    {
+                        continue;
+                    }
                     
                     result.push([d, parseFloat(mem_usage)]);
                 }
