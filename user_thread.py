@@ -24,7 +24,7 @@ class User_Thread(Thread):
         self.running = False
         self.filename = filename
         self.users = users
-        self.is_someone_home = True
+        self.someone_is_home = True
         try:
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
@@ -63,28 +63,27 @@ class User_Thread(Thread):
             #
             result = subprocess.Popen(["arp-scan","-l"], stdout=subprocess.PIPE).stdout.read()
             t = {}
-            log_this_time = False
+            someone_is_home = False
             for (user,mac_addr) in self.users:
                 t[user] = False
                 if mac_addr in result:
                     last_seen[user] = time.time()
                     t[user] = True
-                    log_this_time = True
+                    someone_is_home = True
             
-            self.someone_is_home = log_this_time
+            self.someone_is_home = someone_is_home
             
             #
             # Write the collected data to file
             #
-            if log_this_time:
-                self.mutex.acquire()
-                self.file_handle.write(str(time.time()))
-                for (user,mac) in self.users:
-                    if (time.time() - last_seen[user]) < 600:
-                        self.file_handle.write(","+user)
-                self.file_handle.write("\n")
-                self.file_handle.flush()
-                self.mutex.release()
+            self.mutex.acquire()
+            self.file_handle.write(str(time.time()))
+            for (user,mac) in self.users:
+                if (time.time() - last_seen[user]) < 600:
+                    self.file_handle.write(","+user)
+            self.file_handle.write("\n")
+            self.file_handle.flush()
+            self.mutex.release()
             
             time.sleep(60)
   
@@ -93,7 +92,7 @@ class User_Thread(Thread):
         self.file_handle.close()
     
     def get_is_someone_home(self):
-        if self.is_someone_home:
+        if self.someone_is_home:
             return "YES"
         return "NO"
     
