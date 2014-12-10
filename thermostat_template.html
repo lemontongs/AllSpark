@@ -22,6 +22,36 @@
             
             google.load("visualization", "1", {packages:["corechart","timeline"]});
             
+            function updateSetPoint(device)
+            {
+                var set_point = $("input[name='"+device+"']").val()
+                
+                $.get("cgi-bin/set_temp.py?set_temp="+set_point+"&floor="+device, function (result)
+                { 
+                    if (result.trim() == "OK")
+                    {
+                        $("button[name='"+device+"_btn']").toggleClass('btn-primary');
+                        $("button[name='"+device+"_btn']").toggleClass('btn-success');
+                        setTimeout(function()
+                        {
+                            $("button[name='"+device+"_btn']").toggleClass('btn-success');
+                            $("button[name='"+device+"_btn']").toggleClass('btn-primary');
+                        }, 5000);
+                    }
+                    else
+                    {
+                        $("button[name='"+device+"_btn']").toggleClass('btn-primary');
+                        $("button[name='"+device+"_btn']").toggleClass('btn-danger');
+                        alert(result);
+                        setTimeout(function()
+                        {
+                            $("button[name='"+device+"_btn']").toggleClass('btn-danger');
+                            $("button[name='"+device+"_btn']").toggleClass('btn-primary');
+                        }, 5000);
+                    }
+                });
+            }
+            
             function drawTempData(data)
             {
                 var rows = data.split("\n");
@@ -150,19 +180,19 @@
                 </div>
                 <br>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <p>Top floor is: %.1f F</p>                                                   <!-- TOP FLOOR CURR TEMP -->
                     </div>
                     <div class="col-md-2">
                         <p>Set point: </p>
                     </div>
                     <div class="col-md-4">
-                        <input name="top_temp_control_div" type="text" value="%s">                    <!-- TOP FLOOR SET POINT -->
+                        <input name="top_floor_temp" type="text" value="%s">                    <!-- TOP FLOOR SET POINT -->
                         <script>
-                        $("input[name='top_temp_control_div']").TouchSpin({
+                        $("input[name='top_floor_temp']").TouchSpin({
                             min: 50,
                             max: 80,
-                            step: 0.1,
+                            step: 0.5,
                             decimals: 2,
                             boostat: 5,
                             maxboostedstep: 10,
@@ -170,22 +200,25 @@
                         });
                         </script>
                     </div>
+                    <div class="col-md-2">
+                        <button type="button" name="top_floor_temp_btn" class="btn btn-primary" onclick="updateSetPoint('top_floor_temp')">Submit</button>
+                    </div>
                 </div>
                 <br>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <p>Main floor is: %.1f F</p>                                                   <!-- MAIN FLOOR CURR TEMP -->
                     </div>
                     <div class="col-md-2">
                         <p>Set point: </p>
                     </div>
                     <div class="col-md-4">
-                        <input name="main_temp_control_div" type="text" value="%s">                    <!-- MAIN FLOOR SET POINT -->
+                        <input name="main_floor_temp" type="text" value="%s">                    <!-- MAIN FLOOR SET POINT -->
                         <script>
-                        $("input[name='main_temp_control_div']").TouchSpin({
+                        $("input[name='main_floor_temp']").TouchSpin({
                             min: 50,
                             max: 80,
-                            step: 0.1,
+                            step: 0.5,
                             decimals: 2,
                             boostat: 5,
                             maxboostedstep: 10,
@@ -193,28 +226,34 @@
                         });
                         </script>
                     </div>
+                    <div class="col-md-2">
+                        <button type="button" name="main_floor_temp_btn" class="btn btn-primary" onclick="updateSetPoint('main_floor_temp')">Submit</button>
+                    </div>
                 </div>
                 <br>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <p>Basement is: %.1f F</p>                                                      <!-- BASEMENT CURR TEMP -->
                     </div>
                     <div class="col-md-2">
                         <p>Set point: </p>
                     </div>
                     <div class="col-md-4">
-                        <input name="basement_temp_control_div" type="text" value="%s">                 <!-- BASEMENT SET POINT -->
+                        <input name="basement_floor_temp" type="text" value="%s">                 <!-- BASEMENT SET POINT -->
                         <script>
-                        $("input[name='basement_temp_control_div']").TouchSpin({
+                        $("input[name='basement_floor_temp']").TouchSpin({
                             min: 50,
                             max: 80,
-                            step: 0.1,
+                            step: 0.5,
                             decimals: 2,
                             boostat: 5,
                             maxboostedstep: 10,
                             postfix: 'F'
                         });
                         </script>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" name="basement_floor_temp_btn" class="btn btn-primary" onclick="updateSetPoint('basement_floor_temp')">Submit</button>
                     </div>
                 </div>
             </div>
