@@ -86,7 +86,7 @@ class User_Thread(Thread):
                 self.file_handle.flush()
                 self.mutex.release()
             
-            time.sleep(10)
+            time.sleep(60)
   
     def stop(self):
         self.running = False
@@ -164,13 +164,13 @@ class User_Thread(Thread):
         # is no longer present.
         for i, row in enumerate(processed_data[1:]):
             for (user,mac) in self.users:
-                if start_times[user] == None and (user in processed_data[i]):
+                if start_times[user] == None and (user in row):
                     start_times[user] = processed_data[i]["time"]
-                if start_times[user] != None and (not user in processed_data[i]):
+                if start_times[user] != None and (not (user in row)):
                     # write a string
                     return_string += ("['%s',  %s, %s],\n" % (user,  \
                                                               start_times[user],  \
-                                                              processed_data[i]["time"]))
+                                                              row["time"]))
                     # set start time to None
                     start_times[user] = None
         
