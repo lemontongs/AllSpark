@@ -85,7 +85,7 @@ class User_Thread(Thread):
             self.file_handle.flush()
             self.mutex.release()
             
-            time.sleep(60)
+            time.sleep(30)
   
     def stop(self):
         self.running = False

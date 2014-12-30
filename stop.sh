@@ -6,7 +6,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-spark_pid=`ps -elf | grep spark_thermostat_html_builder.py | grep -v "grep" | awk '{print $4}'`
+spark_pid=`ps -elf | grep "python spark_thermostat_html_builder.py" | grep -v "grep" | awk '{print $4}'`
 
 if [[ $spark_pid -eq "" ]]; then
     echo "Not running"
@@ -15,11 +15,17 @@ fi
 
 echo $spark_pid
 
-kill -2 $spark_pid
+# Kill the process
+if [[ $1 == "-f" ]]; then
+    kill -9 $spark_pid
+else
+    kill -2 $spark_pid
+fi
 
+# Wait for the process to die
 until [[ $spark_pid -eq "" ]]; do
     sleep 1
-    spark_pid=`ps -elf | grep spark_thermostat_html_builder.py | grep -v "grep" | awk '{print $4}'`
+    spark_pid=`ps -elf | grep "python spark_thermostat_html_builder.py" | grep -v "grep" | awk '{print $4}'`
 done
 
 rm *.pyc

@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import ConfigParser
 import sys
 import time
 from threading import Thread, Lock
@@ -23,12 +24,25 @@ class Furnace_Control(Thread):
             print "Warning: no zones defined"
             return
         
+        self.set_point_config = ConfigParser.ConfigParser()
+        
+        # Create the set point file if it does not yet exist
+        self.set_point_filename = 'data/set_points.cfg'
+        self.set_point_section = 'set_points'
+        if not os.path.exists(self.set_point_filename):
+            self.set_point_config.add_section(self.set_point_section)
+        else:
+            self.set_point_config.read(self.set_point_filename)
+        
+        # Verify the set points. This will create them if they dont exist in the config section
+        self.verify_set_points()
+        
+        # Setup the GPIO
         try:
             GPIO.setmode(GPIO.BCM)
             for i, zone in enumerate(self.zones):
                 GPIO.setup(zone['pin'],GPIO.OUT)
                 self.off(zone['pin'])
-                self.zones[i]['set_point'] = zone['get_temp']()
         except:
             print sys.exc_info()
             GPIO.cleanup()
@@ -39,7 +53,20 @@ class Furnace_Control(Thread):
 
     def isInitialized(self):
         return self.initialized
-
+    
+    def verify_set_points(self):
+        for zone in self.zones:
+            if not self.set_point_config.has_option(self.set_point_section, zone['name']):
+                self.set_point_config.set(self.set_point_section, zone['name'], "70.0")
+            
+            t = float(self.set_point_config.get(self.set_point_section, zone['name'], True))
+            if 50 > t or t > 90:
+                print "WARNING: set point for '" + zone['name'] + "' is out of bounds (<50 or >90). Got: " + str(t) + ". Setting it to 70.0"
+                self.set_point_config.set(self.set_point_section, zone['name'], "70.0")
+        
+        with open(self.set_point_filename, 'wb') as configfile:
+            self.set_point_config.write(configfile)
+    
     def stop(self):
         if self.initialized:
             self.initialized = False
@@ -62,7 +89,9 @@ class Furnace_Control(Thread):
         for i, zone in enumerate(self.zones):
             if zone['name'] == zone_name:
                 found = True
-                return zone['set_point']
+                v = self.set_point_config.get(self.set_point_section, zone['name'], True)
+                print "get:", v
+                return float(v)
         if not found:
              print "Warning:", zone_name, "not found"
         return 60.0
@@ -79,7 +108,8 @@ class Furnace_Control(Thread):
         for i, zone in enumerate(self.zones):
             if zone['name'] == zone_name:
                 found = True
-                self.zones[i]['set_point'] = set_point
+                self.set_point_config.set(self.set_point_section, zone['name'], float(set_point))
+                self.verify_set_points()
         if not found:
             print "Warning: zone not found"
 
@@ -99,15 +129,17 @@ class Furnace_Control(Thread):
                 if temp == 0.0:
                     continue
                 
+                set_p = self.get_set_point(zone['name'])
+                
                 s = ""
-                if temp < zone['set_point']:
+                if temp < set_p:
                     s = s + "heating"
                     self.on(zone['pin'])
-                if temp > zone['set_point']:
+                if temp > set_p:
                     s = s + "cooling"
                     self.off(zone['pin'])
             
-                f.write("Current: "+str(temp)+" "+s+" set_point: "+str(zone['set_point'])+"\n")
+                f.write("Current: "+str(temp)+" "+s+" set_point: "+str(set_p)+"\n")
                 f.flush()
             time.sleep(60)
         f.close()
