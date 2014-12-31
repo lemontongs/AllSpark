@@ -18,13 +18,9 @@ template_contents = None
 
 config_filename = "data/config.cfg"
 
-initial_set_point = 70.0
-
 users = [("Matt","14:1a:a3:95:a7:9e"),
          ("Kat", "58:a2:b5:e9:2b:fc"),
          ("Adam","24:e3:14:d2:f8:b2")]
-
-devices = ["top_floor_temp","main_floor_temp","basement_floor_temp"]
 
 ######################################################################
 # Functions
@@ -38,7 +34,32 @@ def write_template_config():
     c.set(sec,"data_directory","data")
     c.set(sec, "html_filename", "%(data_directory)s/index.html")
     
+    sec = "temperature_thread"
+    c.add_section(sec)
+    c.set(sec,"data_directory","data")
+    c.set(sec, "data_file", "%(data_directory)s/floor_temps.csv")
+    c.set(sec, "device_names", "spark_device_1,spark_device_2,spark_device_3")
+    
+    sec = "furnace_control"
+    c.add_section(sec)
+    c.set(sec,"data_directory","data")
+    c.set(sec, "set_point_filename", "%(data_directory)s/set_points.cfg")
+    
+    sec = "memory_thread"
+    c.add_section(sec)
+    c.set(sec,"data_directory","data")
+    c.set(sec, "data_file", "%(data_directory)s/mem_usage.csv")
+    
+    sec = "user_thread"
+    c.add_section(sec)
+    c.set(sec, "users", "user_1,user_2,user_3")
+    
+    for user in ["user_1", "user_2", "user_3"]:
+        c.add_section(user)
+        c.set(user, "mac", "xx:xx:xx:xx:xx:xx:xx")
+
     c.write(open("temp.cfg","wb"))
+
 
 def build_html_file(filename, thermostat, user_thread):
     global template_contents
@@ -81,7 +102,7 @@ def check_permissions(filename):
         f = open(filename, "w+")
         f.close()
     except:
-        print "check_permissions() got error:", sys.exc_info()
+        print "check_permissions() got error:", sys.exc_info(), " on file:", filename
         sys.exit(1)
 
 def print_usage():
@@ -107,6 +128,9 @@ if len(sys.argv) == 1:
 if len(sys.argv) == 2:
     if "-h" == sys.argv[1] or "--help" == sys.argv[1]:
         print_usage()
+    elif "-e" == sys.argv[1] or "--example-config" == sys.argv[1]:
+        write_template_config()
+        os._exit(0)
     else:
         config_filename = sys.argv[1]
 
@@ -124,9 +148,8 @@ if not os.path.exists(data_dir):
 # Thermostat Thread
 ############################################################################
 
-thermostat = \
-    temperature_thread.Temperature_Thread(filename="data/floor_temps.csv", 
-                                          device_names=devices)
+thermostat = temperature_thread.Temperature_Thread(config = config)
+
 if not thermostat.isInitialized():
     print "Error creating temperature thread"
     sys.exit(1)
@@ -136,8 +159,7 @@ thermostat.start()
 ############################################################################
 # User Thread
 ############################################################################
-user = \
-    user_thread.User_Thread(filename = "data/user_state.csv", users = users)
+user = user_thread.User_Thread(config = config)
 
 if not user.isInitialized():
     print "Error creating user thread"
@@ -149,7 +171,7 @@ user.start()
 ############################################################################
 # Memory Thread
 ############################################################################
-mem = memory_thread.Memory_Thread(filename = "data/mem_usage.csv")
+mem = memory_thread.Memory_Thread(config = config)
 
 if not mem.isInitialized():
     print "Error creating memory thread"
@@ -163,6 +185,8 @@ mem.start()
 # Furnace Control Thread
 ############################################################################
 
+devices = config.get("temperature_thread", "device_names").split(",")
+
 def top_temp():
     return thermostat.get_current_device_temp(devices[0])
 def main_temp():
@@ -174,7 +198,7 @@ zones = [ {'name':devices[0], 'pin':18, 'get_temp':top_temp},
           {'name':devices[1], 'pin':23, 'get_temp':main_temp},
           {'name':devices[2], 'pin':24, 'get_temp':basement_temp} ]
 
-furnace_ctrl = furnace_control.Furnace_Control(zones)
+furnace_ctrl = furnace_control.Furnace_Control(zones, "data/set_points.cfg")
 
 if not furnace_ctrl.isInitialized():
     print "Error creating furnace controller"

@@ -17,13 +17,41 @@ from threading import Thread, Lock
 #
 
 class User_Thread(Thread):
-    def __init__(self, filename, users):
+    def __init__(self, config):
         Thread.__init__(self)
         self.initialized = False
+        
+        config_sec = "user_thread"
+        
+        if config_sec not in config.sections():
+            print config_sec + " section missing from config file"
+            return
+        
+        if "data_file" not in config.options(config_sec):
+            print "data_file property missing from " + config_sec + " section"
+            return
+
+        self.filename = config.get(config_sec, "data_file")
+        
+        if "users" not in config.options(config_sec):
+            print "users property missing from " + config_sec + " section"
+            return
+        
+        usernames = config.get(config_sec, "users").split(",")
+        
+        self.users = []
+        
+        for user in usernames:
+            if user not in config.sections():
+                print user + " section is missing"
+                return
+            if "mac" not in config.options(user):
+                print "mac property is missing from the " + user + " section"
+                return
+            self.users.append((user,config.get(user, "mac")))
+        
         self.mutex = Lock()
         self.running = False
-        self.filename = filename
-        self.users = users
         self.someone_is_home = True
         try:
             self.file_handle = open(self.filename, 'a+')

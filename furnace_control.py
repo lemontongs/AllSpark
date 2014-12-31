@@ -10,7 +10,7 @@ import RPi.GPIO as GPIO
 GPIO.setwarnings(False)
 
 class Furnace_Control(Thread):
-    def __init__(self, zones): # example zones:  [ {'name':'top', 'pin':18, 'get_temp':get_temp} ]
+    def __init__(self, zones, set_point_filename): # example zones:  [ {'name':'top', 'pin':18, 'get_temp':get_temp} ]
         Thread.__init__(self)
         
         self.initialized = False
@@ -27,7 +27,7 @@ class Furnace_Control(Thread):
         self.set_point_config = ConfigParser.ConfigParser()
         
         # Create the set point file if it does not yet exist
-        self.set_point_filename = 'data/set_points.cfg'
+        self.set_point_filename = set_point_filename
         self.set_point_section = 'set_points'
         if not os.path.exists(self.set_point_filename):
             self.set_point_config.add_section(self.set_point_section)

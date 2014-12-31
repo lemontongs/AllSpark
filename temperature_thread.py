@@ -17,15 +17,29 @@ from threading import Thread, Lock
 #
 
 class Temperature_Thread(Thread):
-    def __init__(self, filename, device_names):
+    def __init__(self, config):
         Thread.__init__(self)
+        self.initialized = False
         self.mutex = Lock()
         self.run_lock = Lock()
         self.running = False
-        self.initialized = False
-        self.filename = filename
-        self.device_names = device_names
         self.current_temps = {}
+        config_sec = "temperature_thread"
+
+        if config_sec not in config.sections():
+            print config_sec + " section missing from config file"
+            return
+
+        if "data_file" not in config.options(config_sec):
+            print "data_file property missing from " + config_sec + " section"
+            return
+        
+        if "device_names" not in config.options(config_sec):
+            print "device_names property missing from " + config_sec + " section"
+            return
+
+        self.filename = config.get(config_sec, "data_file")
+        self.device_names = config.get(config_sec, "device_names").split(',')
 
         for device in self.device_names:
              self.current_temps[device] = 0.0

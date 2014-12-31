@@ -17,13 +17,27 @@ from threading import Thread, Lock
 #
 
 class Memory_Thread(Thread):
-    def __init__(self, filename, collect_period = 60):
+    def __init__(self, config):
         Thread.__init__(self)
+        self.initialized = False
         self.mutex = Lock()
         self.running = False
-        self.initialized = False
-        self.filename = filename
-        self.collect_period = collect_period
+        config_sec = "memory_thread"
+
+        if config_sec not in config.sections():
+            print config_sec + " section missing from config file"
+            return
+
+        if "data_file" not in config.options(config_sec):
+            print "data_file property missing from " + config_sec + " section"
+            return
+
+        self.filename = config.get(config_sec, "data_file")
+
+        if "collect_period" not in config.options(config_sec):
+            self.collect_period = 60
+        else:
+            self.collect_period = float(config.get(config_sec, "collect_period", True))
         
         try:
             self.file_handle = open(self.filename, 'a+')
