@@ -90,7 +90,6 @@ class Furnace_Control(Thread):
             if zone['name'] == zone_name:
                 found = True
                 v = self.set_point_config.get(self.set_point_section, zone['name'], True)
-                print "get:", v
                 return float(v)
         if not found:
              print "Warning:", zone_name, "not found"
