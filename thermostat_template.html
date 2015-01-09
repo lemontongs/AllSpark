@@ -4,14 +4,15 @@
     
     Current string args:
         1: Table of user data           (string)
-        2: Average temperature          (float)
-        3: Main current temperature     (float)
-        4: Main current set point       (float)
-        5: Top current temperature      (float)
-        6: Top current set point        (float)
-        7: Basement current temperature (float)
-        8: Basement current set point   (float)
-        9: Is someone home?             (string)
+        2: Table of furnace data        (string)
+        3: Average temperature          (float)
+        4: Main current temperature     (float)
+        5: Main current set point       (float)
+        6: Top current temperature      (float)
+        7: Top current set point        (float)
+        8: Basement current temperature (float)
+        9: Basement current set point   (float)
+       10: Is someone home?             (string)
     
     -->
     <head>
@@ -150,11 +151,29 @@
                 chart.draw(dataTable);
             }
             
+            function drawFurnaceData() {
+                var dataTable = new google.visualization.DataTable();
+
+                dataTable.addColumn({ type: 'string', id: 'Zone' });
+                dataTable.addColumn({ type: 'date', id: 'Start' });
+                dataTable.addColumn({ type: 'date', id: 'End' });
+
+                dataTable.addRows([
+                  
+                %s                                                                                   //   FURNACE IS ON DATA
+
+                ]);
+
+                chart = new google.visualization.Timeline(document.getElementById('furnace_chart_div'));
+                chart.draw(dataTable);
+            }
+            
             
             $(document).ready(function () {
                 $.get("floor_temps.csv", function (data) { drawTempData(data); });
                 $.get("mem_usage.csv",   function (data) { drawMemData(data); });
                 drawUserData();
+                drawFurnaceData();
             });
             
         </script>
@@ -254,6 +273,12 @@
                     </div>
                     <div class="col-md-2">
                         <button type="button" name="basement_floor_temp_btn" class="btn btn-primary" onclick="updateSetPoint('basement_floor_temp')">Submit</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <h2>Furnace State:</h2>
+                    <div class="col-md-12">
+                        <div id="furnace_chart_div"></div>
                     </div>
                 </div>
             </div>

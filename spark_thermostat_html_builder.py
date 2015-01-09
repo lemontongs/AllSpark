@@ -61,7 +61,7 @@ def write_template_config():
     c.write(open("temp.cfg","wb"))
 
 
-def build_html_file(filename, thermostat, user_thread):
+def build_html_file(filename, thermostat, user_thread, furnace_control):
     global template_contents
     
     if DEBUG:
@@ -73,6 +73,7 @@ def build_html_file(filename, thermostat, user_thread):
         f.close()
     
     content = template_contents % (user_thread.get_history(), \
+                                   furnace_control.get_history(), \
                                    thermostat.get_average_temp(), \
                                    thermostat.get_current_device_temp(devices[0]), \
                                    furnace_ctrl.get_set_point(devices[0]), \
@@ -198,7 +199,7 @@ zones = [ {'name':devices[0], 'pin':18, 'get_temp':top_temp},
           {'name':devices[1], 'pin':23, 'get_temp':main_temp},
           {'name':devices[2], 'pin':24, 'get_temp':basement_temp} ]
 
-furnace_ctrl = furnace_control.Furnace_Control(zones, "data/set_points.cfg")
+furnace_ctrl = furnace_control.Furnace_Control(zones, "data/set_points.cfg", "data/furnace_state.csv")
 
 if not furnace_ctrl.isInitialized():
     print "Error creating furnace controller"
@@ -247,7 +248,7 @@ signal.signal(signal.SIGINT, receive_signal)
 ############################################################################
 
 while True:
-    build_html_file(html_filename, thermostat, user)
+    build_html_file(html_filename, thermostat, user, furnace_ctrl)
     #os.system("/home/mlamonta/bin/blink1-tool -q --hsb=130,200,50")
     time.sleep(60)
     #os.system("/home/mlamonta/bin/blink1-tool -q --off")

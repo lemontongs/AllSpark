@@ -7,10 +7,12 @@ from threading import Thread, Lock
 import os
 import RPi.GPIO as GPIO
 
+import utilities
+
 GPIO.setwarnings(False)
 
 class Furnace_Control(Thread):
-    def __init__(self, zones, set_point_filename): # example zones:  [ {'name':'top', 'pin':18, 'get_temp':get_temp} ]
+    def __init__(self, zones, set_point_filename, furnace_state_filename): # example zones:  [ {'name':'top', 'pin':18, 'get_temp':get_temp} ]
         Thread.__init__(self)
         
         self.initialized = False
@@ -48,6 +50,16 @@ class Furnace_Control(Thread):
             GPIO.cleanup()
             return
         
+        # Open the furnace state file
+        self.mutex = Lock()
+        self.furnace_state_filename = furnace_state_filename
+        try:
+            self.furnace_state_file = open(self.furnace_state_filename, 'a+')
+            self.furnace_state_file.seek(0,2)
+        except:
+            print "Failed to open", self.furnace_state_file, ":", sys.exc_info()[1]
+            return
+        
         self.running = False
         self.initialized = True
 
@@ -75,6 +87,9 @@ class Furnace_Control(Thread):
             for i, zone in enumerate(self.zones):
                 self.off(zone['pin'])
             GPIO.cleanup()
+            self.mutex.acquire()
+            self.furnace_state_file.close()
+            self.mutex.release()
 
     def on(self, pin):
         if self.initialized:
@@ -122,6 +137,10 @@ class Furnace_Control(Thread):
 
         self.running = True
         while self.running:
+            
+            self.mutex.acquire()
+            self.furnace_state_file.write(str(time.time()))
+            
             for i, zone in enumerate(self.zones):
                 temp = zone['get_temp']()
                 
@@ -133,16 +152,25 @@ class Furnace_Control(Thread):
                 s = ""
                 if temp < set_p:
                     s = s + "heating"
+                    self.furnace_state_file.write(","+zone['name'])
                     self.on(zone['pin'])
                 if temp > set_p:
                     s = s + "cooling"
                     self.off(zone['pin'])
-            
+                
+                
                 f.write("Current: "+str(temp)+" "+s+" set_point: "+str(set_p)+"\n")
                 f.flush()
+                
+            self.furnace_state_file.write("\n")
+            self.furnace_state_file.flush()
+            self.mutex.release()
             time.sleep(60)
         f.close()
-
+    
+    def get_history(self, days=1, seconds=0):
+        search_items = [ z['name'] for z in self.zones ]
+        return utilities.convert_file_to_timeline_string(self.furnace_state_filename, self.mutex, search_items, days=days, seconds=seconds)
 #
 # MAIN
 #
