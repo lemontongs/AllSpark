@@ -6,10 +6,10 @@
         1: Table of user data           (string)
         2: Table of furnace data        (string)
         3: Average temperature          (float)
-        4: Main current temperature     (float)
-        5: Main current set point       (float)
-        6: Top current temperature      (float)
-        7: Top current set point        (float)
+        4: Top current temperature     (float)
+        5: Top current set point       (float)
+        6: Main current temperature      (float)
+        7: Main current set point        (float)
         8: Basement current temperature (float)
         9: Basement current set point   (float)
        10: Is someone home?             (string)
@@ -57,7 +57,7 @@
             {
                 var rows = data.split("\n");
                 
-                var result = [['Time', 'Top Floor', 'Main Floor', 'Basement']];
+                var result = [['Time', 'Main Floor', 'Basement', 'Top Floor']];
                 
                 for ( var i = 0; i < rows.length; i++)
                 {

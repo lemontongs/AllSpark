@@ -38,7 +38,7 @@ def write_template_config():
     c.add_section(sec)
     c.set(sec,"data_directory","data")
     c.set(sec, "data_file", "%(data_directory)s/floor_temps.csv")
-    c.set(sec, "device_names", "spark_device_1,spark_device_2,spark_device_3")
+    c.set(sec, "spark_auth_file", "%(data_directory)s/spark_auth.txt")
     
     sec = "furnace_control"
     c.add_section(sec)
@@ -75,12 +75,12 @@ def build_html_file(filename, thermostat, user_thread, furnace_control):
     content = template_contents % (user_thread.get_history(), \
                                    furnace_control.get_history(), \
                                    thermostat.get_average_temp(), \
-                                   thermostat.get_current_device_temp(devices[0]), \
-                                   furnace_ctrl.get_set_point(devices[0]), \
-                                   thermostat.get_current_device_temp(devices[1]), \
-                                   furnace_ctrl.get_set_point(devices[1]), \
-                                   thermostat.get_current_device_temp(devices[2]), \
+                                   top_temp(), \
                                    furnace_ctrl.get_set_point(devices[2]), \
+                                   main_temp(), \
+                                   furnace_ctrl.get_set_point(devices[0]), \
+                                   basement_temp(), \
+                                   furnace_ctrl.get_set_point(devices[1]), \
                                    user_thread.get_is_someone_home())
     
     if DEBUG:
@@ -186,19 +186,19 @@ mem.start()
 # Furnace Control Thread
 ############################################################################
 
-devices = config.get("temperature_thread", "device_names").split(",")
+devices = thermostat.getDeviceNames()
 
-def top_temp():
-    return thermostat.get_current_device_temp(devices[0])
 def main_temp():
-    return thermostat.get_current_device_temp(devices[1])
+    return thermostat.get_current_device_temp(devices[0])
 def basement_temp():
+    return thermostat.get_current_device_temp(devices[1])
+def top_temp():
     return thermostat.get_current_device_temp(devices[2])
 
-zones = [ {'name':devices[0], 'pin':18, 'get_temp':top_temp},
-          {'name':devices[1], 'pin':23, 'get_temp':main_temp},
-          {'name':devices[2], 'pin':24, 'get_temp':basement_temp} ]
-
+zones = [ {'name':devices[0], 'pin':24, 'get_temp':main_temp},
+          {'name':devices[1], 'pin':18, 'get_temp':basement_temp},
+          {'name':devices[2], 'pin':23, 'get_temp':top_temp} ]
+          
 furnace_ctrl = furnace_control.Furnace_Control(zones, "data/set_points.cfg", "data/furnace_state.csv")
 
 if not furnace_ctrl.isInitialized():

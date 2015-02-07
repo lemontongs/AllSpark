@@ -1,6 +1,6 @@
 import csv
 import os
-import subprocess
+import spark_interface
 import sys
 import time
 import datetime
@@ -33,14 +33,21 @@ class Temperature_Thread(Thread):
         if "data_file" not in config.options(config_sec):
             print "data_file property missing from " + config_sec + " section"
             return
-        
-        if "device_names" not in config.options(config_sec):
-            print "device_names property missing from " + config_sec + " section"
+
+        if "spark_auth_file" not in config.options(config_sec):
+            print "spark_auth_file property missing from " + config_sec + " section"
             return
 
         self.filename = config.get(config_sec, "data_file")
-        self.device_names = config.get(config_sec, "device_names").split(',')
+        spark_auth_filename = config.get(config_sec, "spark_auth_file")
+        self.spark = spark_interface.Spark_Interface(spark_auth_filename)
+        
+        if not self.spark.isInitialized():
+            print "Error: spark_interface failed to initialize"
+            return
 
+        self.device_names = self.spark.getDeviceNames()
+        
         for device in self.device_names:
              self.current_temps[device] = 0.0
         self.current_average_temperature = 0.0
@@ -57,6 +64,13 @@ class Temperature_Thread(Thread):
     def isInitialized(self):
         return self.initialized
     
+    def getDeviceNames(self):
+        if not self.initialized:
+            print "Warning: getDeviceNames called before initialized"
+            return []
+        
+        return self.device_names
+    
     def run(self):
         
         if not self.initialized:
@@ -71,7 +85,7 @@ class Temperature_Thread(Thread):
             count = 0
             for device in self.device_names:
               
-                t[device] = subprocess.Popen(["spark","get",device,"temperature"], stdout=subprocess.PIPE).stdout.read().strip()
+                t[device] = self.spark.getVariable(device, "temperature")
               
                 try:
                     x = x + float(t[device])
@@ -80,7 +94,7 @@ class Temperature_Thread(Thread):
                 except (KeyboardInterrupt, SystemExit):
                     raise
                 except:
-                    print "Error getting temperature ("+device+"), got: \"" + t[device] + "\" setting to null"
+                    print "Error getting temperature ("+device+") setting to null"
                     t[device] = "null"
           
             if count > 0:

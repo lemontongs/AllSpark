@@ -93,11 +93,11 @@ class Furnace_Control(Thread):
 
     def on(self, pin):
         if self.initialized:
-            GPIO.output(pin,True)
+            GPIO.output(pin,False)
 
     def off(self, pin):
         if self.initialized:
-            GPIO.output(pin,False)
+            GPIO.output(pin,True)
 
     def get_set_point(self, zone_name):
         found = False
