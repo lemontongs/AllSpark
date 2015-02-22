@@ -18,10 +18,6 @@ template_contents = None
 
 config_filename = "data/config.cfg"
 
-users = [("Matt","14:1a:a3:95:a7:9e"),
-         ("Kat", "58:a2:b5:e9:2b:fc"),
-         ("Adam","24:e3:14:d2:f8:b2")]
-
 ######################################################################
 # Functions
 ######################################################################
@@ -75,11 +71,11 @@ def build_html_file(filename, thermostat, user_thread, furnace_control):
     content = template_contents % (user_thread.get_history(), \
                                    furnace_control.get_history(), \
                                    thermostat.get_average_temp(), \
-                                   top_temp(), \
+                                   thermostat.get_current_device_temp(devices[2]), \
                                    furnace_ctrl.get_set_point(devices[2]), \
-                                   main_temp(), \
+                                   thermostat.get_current_device_temp(devices[0]), \
                                    furnace_ctrl.get_set_point(devices[0]), \
-                                   basement_temp(), \
+                                   thermostat.get_current_device_temp(devices[1]), \
                                    furnace_ctrl.get_set_point(devices[1]), \
                                    user_thread.get_is_someone_home())
     
@@ -198,8 +194,8 @@ def top_temp():
 zones = [ {'name':devices[0], 'pin':24, 'get_temp':main_temp},
           {'name':devices[1], 'pin':18, 'get_temp':basement_temp},
           {'name':devices[2], 'pin':23, 'get_temp':top_temp} ]
-          
-furnace_ctrl = furnace_control.Furnace_Control(zones, "data/set_points.cfg", "data/furnace_state.csv")
+
+furnace_ctrl = furnace_control.Furnace_Control(thermostat, "data/set_points.cfg", "data/furnace_state.csv")
 
 if not furnace_ctrl.isInitialized():
     print "Error creating furnace controller"
@@ -233,7 +229,7 @@ comms.start()
 ############################################################################
 
 def receive_signal(signum, stack):
-    print "Caught signal:", str(signum)
+    print "Caught signal:", str(signum), "closing threads..."
     thermostat.stop()
     user.stop()
     mem.stop()

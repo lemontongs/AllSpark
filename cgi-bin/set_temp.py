@@ -7,15 +7,20 @@ import zmq
 import cgitb
 cgitb.enable()
 
-def send_temperature(set_point,floor):
+
+def send_message(msg):
   try:
     context = zmq.Context()
     socket = context.socket(zmq.PAIR)
     socket.setsockopt(zmq.LINGER, 2000)
     socket.connect("tcp://localhost:5555")
-    socket.send("set_point,%s,%s"%(floor,str(set_point)))
+    socket.send(msg)
   except:
     print sys.exc_info()
+
+
+def send_temperature(set_point,floor):
+  send_message("set_point,%s,%s"%(floor,str(set_point)))
 
 
 # print header

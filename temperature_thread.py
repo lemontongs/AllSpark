@@ -49,7 +49,7 @@ class Temperature_Thread(Thread):
         self.device_names = self.spark.getDeviceNames()
         
         for device in self.device_names:
-             self.current_temps[device] = 0.0
+             self.current_temps[device] = None
         self.current_average_temperature = 0.0
 
         try:
@@ -96,6 +96,7 @@ class Temperature_Thread(Thread):
                 except:
                     print "Error getting temperature ("+device+") setting to null"
                     t[device] = "null"
+                    self.current_temps[device] = None
           
             if count > 0:
                 self.current_average_temperature = x / count
@@ -124,9 +125,12 @@ class Temperature_Thread(Thread):
     
     def get_current_device_temp(self, device):
         if device in self.current_temps:
-            return self.current_temps[device]
+            if None == self.current_temps[device]:
+                return 0.0
+            else:
+                return self.current_temps[device]
         print "WARNING:",device,"not found" 
-        return 0.0
+        return "ERROR"
     
     def get_history(self, days=1, seconds=0):
         

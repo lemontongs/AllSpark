@@ -84,14 +84,16 @@ class Spark_Interface():
         
         deviceID = [ n[1] for n in self.devices if n[0] == deviceName ]
         
-        r = requests.get(base_url+"devices/"+deviceID[0]+"/"+variable+self.access_token)
-        
-        if r.status_code != 200:
-            print "Error: Could not get: "+url
+        try:
+            r = requests.get(base_url+"devices/"+deviceID[0]+"/"+variable+self.access_token)
+            
+            if r.status_code != 200:
+                print "Error: Could not get: "+r.reason
+                return None
+            
+            return r.json()['result']
+        except:
             return None
-        
-        return r.json()['result']
-        
 
 
 

@@ -39,7 +39,7 @@ class User_Thread(Thread):
         
         usernames = config.get(config_sec, "users").split(",")
         
-        self.users = []
+        self.users = {}
         
         for user in usernames:
             if user not in config.sections():
@@ -48,7 +48,7 @@ class User_Thread(Thread):
             if "mac" not in config.options(user):
                 print "mac property is missing from the " + user + " section"
                 return
-            self.users.append((user,config.get(user, "mac")))
+            self.users[user] = {'mac':config.get(user, "mac"), 'is_home':False, 'last_seen':0.0}
         
         self.mutex = Lock()
         self.running = False
@@ -75,10 +75,6 @@ class User_Thread(Thread):
             print "ERROR: Running in non-privaleged mode, User_Thread not running" 
             return
         
-        # Keep track of the last time a user was seen
-        last_seen = {}
-        for (user,mac_addr) in self.users:
-            last_seen[user] = 0.0
         
         #############
         # MAIN LOOP #
@@ -90,39 +86,49 @@ class User_Thread(Thread):
             # Check if a user is here now
             #
             result = subprocess.Popen(["arp-scan","-l"], stdout=subprocess.PIPE).stdout.read()
-            t = {}
-            someone_is_home = False
-            for (user,mac_addr) in self.users:
-                t[user] = False
-                if mac_addr in result:
-                    last_seen[user] = time.time()
-                    t[user] = True
-                    someone_is_home = True
-            
-            self.someone_is_home = someone_is_home
+            now = time.time()
+            for user in self.users.keys():
+                is_home = self.users[user]['mac'] in result
+                if is_home:
+                    self.users[user]['last_seen'] = now
+                if (now - self.users[user]['last_seen']) < 600:
+                    self.users[user]['is_home'] = True
+                else:
+                    self.users[user]['is_home'] = False
             
             #
             # Write the collected data to file
             #
             self.mutex.acquire()
             self.file_handle.write(str(time.time()))
-            for (user,mac) in self.users:
-                if (time.time() - last_seen[user]) < 600:
+            someone_is_home = False
+            for user in self.users.keys():
+                if self.users[user]['is_home']:
                     self.file_handle.write(","+user)
+                    someone_is_home = True
+            self.someone_is_home = someone_is_home
             self.file_handle.write("\n")
             self.file_handle.flush()
             self.mutex.release()
             
-            time.sleep(30)
+            time.sleep(60)
   
     def stop(self):
         self.running = False
         self.file_handle.close()
     
     def get_is_someone_home(self):
+        if not self.initialized:
+            return "UNKNOWNs"
         if self.someone_is_home:
             return "YES"
         return "NO"
+    
+    def is_user_home(self, user):
+        if user not in self.users.keys():
+            print "Warning: unknown user: "+user
+            return False
+        return self.users[user]['is_home']
     
     def get_history(self, days=1, seconds=0):
         
@@ -169,7 +175,7 @@ class User_Thread(Thread):
             
             temp = {}
             temp["time"] = time
-            for (j,(user,mac)) in enumerate(self.users):
+            for user in self.users:
                 if user in row:
                     temp[user] = "1"
             
@@ -181,7 +187,7 @@ class User_Thread(Thread):
         # Save the first state
         previous = processed_data[0]
         start_times = {} 
-        for (user,mac) in self.users:
+        for user in self.users:
             if user in processed_data[0]:
                 start_times[user] = processed_data[0]["time"]
             else:
@@ -190,7 +196,7 @@ class User_Thread(Thread):
         # Go through the processed data and write out a string whenever the user
         # is no longer present.
         for i, row in enumerate(processed_data[1:]):
-            for (user,mac) in self.users:
+            for user in self.users:
                 if start_times[user] == None and (user in row):
                     start_times[user] = processed_data[i]["time"]
                 if start_times[user] != None and (not (user in row)):
@@ -201,7 +207,7 @@ class User_Thread(Thread):
                     # set start time to None
                     start_times[user] = None
         
-        for (user,mac) in self.users:
+        for user in self.users:
             if start_times[user] != None:
                 return_string += ("['%s',  %s, %s],\n" % (user,  \
                                                           start_times[user],  \
