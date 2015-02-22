@@ -68,6 +68,8 @@ def build_html_file(filename, thermostat, user_thread, furnace_control):
         template_contents = f.read()
         f.close()
     
+    devices = thermostat.getDeviceNames()
+    
     content = template_contents % (user_thread.get_history(), \
                                    furnace_control.get_history(), \
                                    thermostat.get_average_temp(), \
@@ -181,19 +183,6 @@ mem.start()
 ############################################################################
 # Furnace Control Thread
 ############################################################################
-
-devices = thermostat.getDeviceNames()
-
-def main_temp():
-    return thermostat.get_current_device_temp(devices[0])
-def basement_temp():
-    return thermostat.get_current_device_temp(devices[1])
-def top_temp():
-    return thermostat.get_current_device_temp(devices[2])
-
-zones = [ {'name':devices[0], 'pin':24, 'get_temp':main_temp},
-          {'name':devices[1], 'pin':18, 'get_temp':basement_temp},
-          {'name':devices[2], 'pin':23, 'get_temp':top_temp} ]
 
 furnace_ctrl = furnace_control.Furnace_Control(thermostat, "data/set_points.cfg", "data/furnace_state.csv")
 
