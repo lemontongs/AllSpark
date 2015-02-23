@@ -147,11 +147,9 @@ class Furnace_Control(Thread):
                 except:
                     pass
             else:
-                print "option:",option
                 self.rules['rules'][option] = \
                     self.set_point_config.get(self.user_rule_section, option, True)
         
-        print self.rules
     
     def save_zones_to_file(self):
         for device in self.zones.keys():
@@ -198,13 +196,9 @@ class Furnace_Control(Thread):
             # if any of the users are home AND have this zone in there list, 
             # use the custom set point (from the set point file)
             for user in self.rules['rules']:
-                print user, self.user.is_user_home(user), (zone_name in self.rules['rules'][user]), self.zones[zone_name]['set_point']
                 if self.user.is_user_home(user) and (zone_name in self.rules['rules'][user]):
                     set_point = self.zones[zone_name]['set_point']
                     break
-            
-            print "get_set_point("+zone_name+"): set point: "+str(set_point)
-            print""
             
             # None of the users who are home have this zone in there rules so 
             # use the "away" set point
