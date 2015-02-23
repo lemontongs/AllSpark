@@ -125,10 +125,13 @@ class User_Thread(Thread):
         return "NO"
     
     def is_user_home(self, user):
-        if user not in self.users:
-            print "Warning: unknown user: "+user
-            return False
-        return self.users[user]['is_home']
+        
+        for case_sensitive_user in self.users:
+            if case_sensitive_user.lower() == user.lower():
+                return self.users[case_sensitive_user]['is_home'] 
+        
+        print "Warning: unknown user: "+user
+        return False
     
     def get_history(self, days=1, seconds=0):
         

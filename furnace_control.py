@@ -38,6 +38,7 @@ class Furnace_Control(Thread):
         self.set_point_filename = set_point_filename
         self.set_point_section = 'set_points'
         self.ctrl_pins_section = 'control_pins'
+        self.user_rule_section = 'rules'
         
         # Load and verify the set point file.
         self.load_set_point_file()
@@ -75,6 +76,7 @@ class Furnace_Control(Thread):
         if not os.path.exists(self.set_point_filename):
             self.set_point_config.add_section(self.set_point_section)
             self.set_point_config.add_section(self.ctrl_pins_section)
+            self.set_point_config.add_section(self.user_rule_section)
             
             for device in self.thermostat.getDeviceNames():
                 self.set_point_config.set(self.set_point_section, device, "65.0")
@@ -133,6 +135,23 @@ class Furnace_Control(Thread):
         
         # Write the file again, with the corrections (if any)
         self.save_zones_to_file()
+        
+        # Load the rules
+        self.rules = {'away_set_point' : 60.0, 'rules' : {} }
+        
+        for option in self.set_point_config.options(self.user_rule_section):
+            if 'away_set_point' in option:
+                try:
+                    self.rules['away_set_point'] = \
+                        float(self.set_point_config.get(self.user_rule_section, 'away_set_point', True))
+                except:
+                    pass
+            else:
+                print "option:",option
+                self.rules['rules'][option] = \
+                    self.set_point_config.get(self.user_rule_section, option, True)
+        
+        print self.rules
     
     def save_zones_to_file(self):
         for device in self.zones.keys():
@@ -173,15 +192,6 @@ class Furnace_Control(Thread):
             if zone_name not in self.zones.keys():
                 print "Warning: get_set_point:", zone_name, "not found"
                 return 60.0
-            
-            #TODO: put this data in the config file!
-            # Test rules:
-            # this means these zones get the custom set point if this user is 
-            # home, otherwise the zone gets the "away" set point
-            self.rules = {'away_set_point' : 60.0, \
-                          'rules': { 'Matt': 'top_floor_temp,main_floor_temp', \
-                                     'Kat' : 'top_floor_temp,main_floor_temp', \
-                                     'Adam': 'basement_floor_temp' } }
             
             set_point = self.rules['away_set_point']
             
