@@ -125,7 +125,7 @@ class User_Thread(Thread):
         return "NO"
     
     def is_user_home(self, user):
-        if user not in self.users.keys():
+        if user not in self.users:
             print "Warning: unknown user: "+user
             return False
         return self.users[user]['is_home']

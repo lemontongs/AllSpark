@@ -21,7 +21,7 @@ import utilities
 
 
 class Furnace_Control(Thread):
-    def __init__(self, thermostat, set_point_filename, furnace_state_filename):
+    def __init__(self, thermostat, user, set_point_filename, furnace_state_filename):
         Thread.__init__(self)
         
         self.initialized = False
@@ -31,6 +31,7 @@ class Furnace_Control(Thread):
             return
         
         self.thermostat = thermostat
+        self.user = user
         
         # Create the set point file if it does not yet exist
         self.set_point_config = ConfigParser.ConfigParser()
@@ -161,17 +162,43 @@ class Furnace_Control(Thread):
     def off(self, pin):
         if self.initialized:
             GPIO.output(pin,True)
-
+    
+    
+    # Get the set point, this can be different if the user is not home
     def get_set_point(self, zone_name):
         if self.initialized:
-        
+            
             self.load_set_point_file()
             
             if zone_name not in self.zones.keys():
                 print "Warning: get_set_point:", zone_name, "not found"
                 return 60.0
             
-            return self.zones[zone_name]['set_point']
+            #TODO: put this data in the config file!
+            # Test rules:
+            # this means these zones get the custom set point if this user is 
+            # home, otherwise the zone gets the "away" set point
+            self.rules = {'away_set_point' : 60.0, \
+                          'rules': { 'Matt': 'top_floor_temp,main_floor_temp', \
+                                     'Kat' : 'top_floor_temp,main_floor_temp', \
+                                     'Adam': 'basement_floor_temp' } }
+            
+            set_point = self.rules['away_set_point']
+            
+            # if any of the users are home AND have this zone in there list, 
+            # use the custom set point (from the set point file)
+            for user in self.rules['rules']:
+                print user, self.user.is_user_home(user), (zone_name in self.rules['rules'][user]), self.zones[zone_name]['set_point']
+                if self.user.is_user_home(user) and (zone_name in self.rules['rules'][user]):
+                    set_point = self.zones[zone_name]['set_point']
+                    break
+            
+            print "get_set_point("+zone_name+"): set point: "+str(set_point)
+            print""
+            
+            # None of the users who are home have this zone in there rules so 
+            # use the "away" set point
+            return set_point
         
     def parse_set_point_message(self, msg):
         if len(msg.split(',')) != 3:
@@ -213,8 +240,8 @@ class Furnace_Control(Thread):
             for zone in self.zones:
                 
                 temp = self.thermostat.get_current_device_temp(zone)
-                set_p = self.get_set_point(zone)
                 pin = self.zones[zone]['pin']
+                set_p = self.get_set_point(zone)
                 
                 s = ""
                 if temp == None:

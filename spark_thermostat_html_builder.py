@@ -184,7 +184,11 @@ mem.start()
 # Furnace Control Thread
 ############################################################################
 
-furnace_ctrl = furnace_control.Furnace_Control(thermostat, "data/set_points.cfg", "data/furnace_state.csv")
+furnace_ctrl = furnace_control.Furnace_Control \
+    (thermostat, \
+     user, \
+     "data/set_points.cfg", \
+     "data/furnace_state.csv")
 
 if not furnace_ctrl.isInitialized():
     print "Error creating furnace controller"
