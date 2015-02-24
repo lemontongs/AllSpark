@@ -1,25 +1,43 @@
 <!DOCTYPE html>
-<html>
-    <!--
-    
+<html lang="en">
+  <!--
+  
     Current string args:
         1: Table of user data           (string)
         2: Table of furnace data        (string)
         3: Average temperature          (float)
-        4: Top current temperature     (float)
-        5: Top current set point       (float)
-        6: Main current temperature      (float)
-        7: Main current set point        (float)
+        4: Top current temperature      (float)
+        5: Top current set point        (float)
+        6: Main current temperature     (float)
+        7: Main current set point       (float)
         8: Basement current temperature (float)
         9: Basement current set point   (float)
        10: Is someone home?             (string)
     
     -->
-    <head>
-        <script type="text/javascript" src="../jquery.min.js"></script>
-        <script type="text/javascript" src="../jquery.bootstrap-touchspin.min.js"></script>
-        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-        <script type="text/javascript">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Lemontongs">
+    <link rel="icon" href="favicon.ico">
+
+    <title>Home Control</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="jquery.bootstrap-touchspin.min.js"></script>
+    
+    <!-- Bootstrap core CSS -->
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="jquery.bootstrap-touchspin.min.css" rel="stylesheet"/>
+
+    <!-- Custom styles for this template -->
+    <link href="navbar.css" rel="stylesheet">
+    
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
             
             google.load("visualization", "1", {packages:["corechart","timeline"]});
             
@@ -57,7 +75,7 @@
             {
                 var rows = data.split("\n");
                 
-                var result = [['Time', 'Main Floor', 'Basement', 'Top Floor']];
+                var result = [['Time', '1st', 'B', '2nd']];
                 
                 for ( var i = 0; i < rows.length; i++)
                 {
@@ -73,7 +91,7 @@
                     
                     var now = new Date();
                     var days = (now - d)/(1000*60*60*24);
-                    if (days > 1.0)
+                    if (days > 0.5)
                     {
                         continue;
                     }
@@ -143,7 +161,7 @@
 
                 dataTable.addRows([
                   
-                %s                                                                                   //   USER IS HOME DATA
+                %s                                                                                  //   USER IS HOME DATA
 
                 ]);
 
@@ -169,7 +187,9 @@
             }
             
             
-            $(document).ready(function () {
+            
+            
+            $(document).ready(function () {          
                 $.get("floor_temps.csv", function (data) { drawTempData(data); });
                 $.get("mem_usage.csv",   function (data) { drawMemData(data); });
                 drawUserData();
@@ -177,130 +197,179 @@
             });
             
         </script>
-    </head>
-    <body>
-        
-        <div class="container">
-        
-            <div class="header">
-                <!--ul class="nav nav-pills pull-right">
-                    <li class="active"><a href="#">Thermostat</a></li>
-                </ul-->
-                <h3 class="text-muted">Home Control</h3>
-            </div>
 
-            <div class="jumbotron">
-                <h2>Thermostat</h2>
-                <p class="lead">Current average temperature is: %.1f F</p>                             <!-- CURR AVERAGE TEMP -->
-                <div class="row">
-                     <div class="col-md-12">
-                        <div id="temp_chart_div" style="height: 500px;"></div>
-                     </div>
-                </div>
-                <br>
-                <div class="row">
-                    <div class="col-md-4">
-                        <p>Top floor is: %.1f F</p>                                                   <!-- TOP FLOOR CURR TEMP -->
-                    </div>
-                    <div class="col-md-2">
-                        <p>Set point: </p>
-                    </div>
-                    <div class="col-md-4">
-                        <input name="top_floor_temp" type="text" value="%s">                    <!-- TOP FLOOR SET POINT -->
-                        <script>
-                        $("input[name='top_floor_temp']").TouchSpin({
-                            min: 50,
-                            max: 80,
-                            step: 0.5,
-                            decimals: 2,
-                            boostat: 5,
-                            maxboostedstep: 10,
-                            postfix: 'F'
-                        });
-                        </script>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" name="top_floor_temp_btn" class="btn btn-primary" onclick="updateSetPoint('top_floor_temp')">Submit</button>
-                    </div>
-                </div>
-                <br>
-                <div class="row">
-                    <div class="col-md-4">
-                        <p>Main floor is: %.1f F</p>                                                   <!-- MAIN FLOOR CURR TEMP -->
-                    </div>
-                    <div class="col-md-2">
-                        <p>Set point: </p>
-                    </div>
-                    <div class="col-md-4">
-                        <input name="main_floor_temp" type="text" value="%s">                    <!-- MAIN FLOOR SET POINT -->
-                        <script>
-                        $("input[name='main_floor_temp']").TouchSpin({
-                            min: 50,
-                            max: 80,
-                            step: 0.5,
-                            decimals: 2,
-                            boostat: 5,
-                            maxboostedstep: 10,
-                            postfix: 'F'
-                        });
-                        </script>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" name="main_floor_temp_btn" class="btn btn-primary" onclick="updateSetPoint('main_floor_temp')">Submit</button>
-                    </div>
-                </div>
-                <br>
-                <div class="row">
-                    <div class="col-md-4">
-                        <p>Basement is: %.1f F</p>                                                      <!-- BASEMENT CURR TEMP -->
-                    </div>
-                    <div class="col-md-2">
-                        <p>Set point: </p>
-                    </div>
-                    <div class="col-md-4">
-                        <input name="basement_floor_temp" type="text" value="%s">                 <!-- BASEMENT SET POINT -->
-                        <script>
-                        $("input[name='basement_floor_temp']").TouchSpin({
-                            min: 50,
-                            max: 80,
-                            step: 0.5,
-                            decimals: 2,
-                            boostat: 5,
-                            maxboostedstep: 10,
-                            postfix: 'F'
-                        });
-                        </script>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" name="basement_floor_temp_btn" class="btn btn-primary" onclick="updateSetPoint('basement_floor_temp')">Submit</button>
-                    </div>
-                </div>
-                <div class="row">
-                    <h2>Furnace State:</h2>
-                    <div class="col-md-12">
-                        <div id="furnace_chart_div"></div>
-                    </div>
-                </div>
-            </div>
+  </head>
 
-            <div class="jumbotron">
-                <h2>Users</h2>
-                <p class="lead">Someone is home: %s</p>                                                   <!-- SOMEONE IS HOME -->
-                <div id="user_chart_div"></div>
-            </div>
+  <body>
 
-            <div class="jumbotron">
-                <h2>Memory Usage</h2>
-                <div id="mem_chart_div"></div>
+    <div class="container">
+    
+      <!-- Static navbar -->
+      <nav class="navbar navbar-default">
+        <div class="container-fluid">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">Home Control</a>
+          </div>
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav navbar-right">
+              <li><a href="#thermostats">Thermostats</a></li>
+              <li><a href="#plot"       >Plot</a></li>
+              <li><a href="#whosehome"  >Who is home?</a></li>
+              <li><a href="#sysinfo"    >System Info</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div><!--/.container-fluid -->
+      </nav><!-- /.navbar -->
+      
+      
+      
+      
+      <div id="plot" class="jumbotron">
+        <h2>Plot</h2>
+        <p class="lead">Current average temperature: %.1f F</p>                             <!-- CURR AVERAGE TEMP -->
+        <div class="row">
+          <div class="col-md-12">
+            <div id="temp_chart_div" style="height: 500px;"></div>
+          </div>
+        </div>
+        <div class="row">
+          <h2>Furnace State:</h2>
+          <div class="col-md-12">
+            <div id="furnace_chart_div"></div>
+          </div>
+        </div>
+      </div>
+      
+      
+      <div id="thermostats" class="jumbotron">
+        <!-- Temp control -->
+        <div class="row">
+          <div class="col-md-2">
+            <h2>2nd Floor</h2>
+            <p>Current: %.1f</p>                                                            <!-- TOP CURRENT TEMP -->
+          </div>
+          <div class="col-md-5">
+            <h2></h2>
+            <div class="input-group input-group-lg">
+              <input id="demo5" type="text" class="form-control" name="top_floor_temp" value="%.1f">   <!-- TOP SET POINT -->
+              <div class="input-group-btn">
+                  <button name="top_floor_temp_btn" type="button" class="btn btn-primary" onclick="updateSetPoint('top_floor_temp')">Submit</button>
+              </div>
             </div>
-
-            <div class="footer">
-                <p>&copy; Lemontongs 2014</p>
+            <script>
+              $("input[name='top_floor_temp']").TouchSpin({
+                  min: 50,
+                  max: 80,
+                  step: 0.5,
+                  decimals: 1,
+                  boostat: 5,
+                  maxboostedstep: 10,
+                  prefix: "Set:",
+                  postfix: 'F'
+                  });
+            </script>
+          </div>
+        </div>
+  
+  
+        <!-- Temp control -->
+        <div class="row">
+          <div class="col-md-2">
+            <h2>1st Floor</h2>
+            <p>Current: %.1f</p>                                                            <!-- MAIN CURRENT TEMP -->
+          </div>
+          <div class="col-md-5">
+            <h2></h2>
+            <div class="input-group input-group-lg">
+              <input id="demo5" type="text" class="form-control" name="main_floor_temp" value="%.1f">   <!-- MAIN SET POINT -->
+              <div class="input-group-btn">
+                  <button name="main_floor_temp_btn" type="button" class="btn btn-primary" onclick="updateSetPoint('main_floor_temp')">Submit</button>
+              </div>
             </div>
-
-        </div> <!-- /container -->
-        
-        <link href="../bootstrap.min.css" rel="stylesheet"/>
-        <link href="../jquery.bootstrap-touchspin.min.css" rel="stylesheet"/>
-    </body>
+            <script>
+              $("input[name='main_floor_temp']").TouchSpin({
+                  min: 50,
+                  max: 80,
+                  step: 0.5,
+                  decimals: 1,
+                  boostat: 5,
+                  maxboostedstep: 10,
+                  prefix: "Set:",
+                  postfix: 'F'
+                  });
+            </script>
+          </div>
+        </div>
+  
+  
+        <!-- Temp control -->
+        <div class="row">
+          <div class="col-md-2">
+            <h2>Basement</h2>
+            <p>Current: %.1f</p>                                                            <!-- BASEMENT CURRENT TEMP -->
+          </div>
+          <div class="col-md-5">
+            <h2></h2>
+            <div class="input-group input-group-lg">
+              <input id="demo5" type="text" class="form-control" name="basement_floor_temp" value="%.1f">   <!-- BASEMENT SET POINT -->
+              <div class="input-group-btn">
+                  <button name="basement_floor_temp_btn" type="button" class="btn btn-primary" onclick="updateSetPoint('basement_floor_temp')">Submit</button>
+              </div>
+            </div>
+            <script>
+              $("input[name='basement_floor_temp']").TouchSpin({
+                  min: 50,
+                  max: 80,
+                  step: 0.5,
+                  decimals: 1,
+                  boostat: 5,
+                  maxboostedstep: 10,
+                  prefix: "Set:",
+                  postfix: 'F'
+                  });
+            </script>
+          </div>
+        </div>
+      </div>
+      
+      
+      <div id="whosehome" class="jumbotron">
+        <div class="row">
+          <div class="col-md-12">
+            <h2>Someone is home: %s</h2>                                                   <!-- SOMEONE IS HOME -->
+            <div id="user_chart_div"></div>
+          </div>
+        </div>
+      </div>
+      
+      
+      
+      <div id="sysinfo" class="jumbotron">
+        <div class="row">
+          <div class="col-md-12">
+            <h2>System Info</h2>
+            <h3>Memory Usage</h3>
+            <div id="mem_chart_div"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="row">
+        <div class="col-md-12">
+          <div class="footer">
+            <p>&copy; Lemontongs 2015</p>
+          </div>
+        </div>
+      </div>
+    
+    </div> <!-- /container -->
+  </body>
 </html>
+

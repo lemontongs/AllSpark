@@ -25,6 +25,8 @@ class Furnace_Control(Thread):
         Thread.__init__(self)
         
         self.initialized = False
+        self.set_point_lock = Lock()
+        
         
         if USING_RPI_GPIO and (os.geteuid() != 0):
             print "ERROR: Running in non-privaleged mode, Furnace_Control not running" 
@@ -98,11 +100,7 @@ class Furnace_Control(Thread):
                 
                 if not self.set_point_config.has_option(self.ctrl_pins_section, device):
                     self.set_point_config.set(self.set_point_section, device, "None")
-            
-        # Write the file
-        with open(self.set_point_filename, 'wb') as configfile:
-            self.set_point_config.write(configfile)
-        
+                
         # verify the contents of the file, and create the zones structure
         self.zones = {}
         for device in self.thermostat.getDeviceNames():
@@ -118,7 +116,7 @@ class Furnace_Control(Thread):
                 t = 65.0
             
             self.zones[device] = {'set_point':t}
-            self.set_point_config.set(self.set_point_section, device, str(t))
+            self.set_point_config.set(self.set_point_section, device, t)
             
             p = None
             try:
@@ -133,7 +131,7 @@ class Furnace_Control(Thread):
             
             self.zones[device]['pin'] = p
         
-        # Write the file again, with the corrections (if any)
+        # Write the file, with the corrections (if any)
         self.save_zones_to_file()
         
         # Load the rules
@@ -155,7 +153,7 @@ class Furnace_Control(Thread):
         for device in self.zones.keys():
             set_point = str(self.zones[device]['set_point'])
             self.set_point_config.set(self.set_point_section, device, set_point)
-         
+        
         with open(self.set_point_filename, 'wb') as configfile:
             self.set_point_config.write(configfile)
 
@@ -185,7 +183,7 @@ class Furnace_Control(Thread):
     def get_set_point(self, zone_name):
         if self.initialized:
             
-            self.load_set_point_file()
+            self.set_point_lock.acquire()
             
             if zone_name not in self.zones.keys():
                 print "Warning: get_set_point:", zone_name, "not found"
@@ -202,6 +200,7 @@ class Furnace_Control(Thread):
             
             # None of the users who are home have this zone in there rules so 
             # use the "away" set point
+            self.set_point_lock.release()
             return set_point
         
     def parse_set_point_message(self, msg):
@@ -211,18 +210,26 @@ class Furnace_Control(Thread):
         
         zone = msg.split(',')[1]
         
-        if zone not in self.zones.keys():
-            print "Error parsing set_point message: "+zone+" not found"
-            return
-            
-        set_point = 65.0
+        self.set_point_lock.acquire()
         try:
-            set_point = float(msg.split(',')[2])
+            if zone not in self.zones.keys():
+                print "Error parsing set_point message: "+zone+" not found"
+                self.set_point_lock.release()
+                return
+                
+            set_point = 65.0
+            try:
+                set_point = float(msg.split(',')[2])
+            except:
+                pass
+            
+            self.zones[zone]['set_point'] = set_point
+            self.save_zones_to_file()
         except:
-            pass
-        
-        self.zones[zone]['set_point'] = set_point
-        self.save_zones_to_file()
+            self.set_point_lock.release()
+            raise
+
+        self.set_point_lock.release()
 
     def run(self):
         
@@ -248,7 +255,7 @@ class Furnace_Control(Thread):
                 set_p = self.get_set_point(zone)
                 
                 s = ""
-                if temp == None:
+                if temp == -1000.0:
                     s = "invalid"
                     self.off(pin)
                 elif temp < set_p:
@@ -259,7 +266,7 @@ class Furnace_Control(Thread):
                     s = "cooling"
                     self.off(pin)
                 
-                f.write(zone+" "+str(temp)+" "+str(set_p)+"\n")
+                f.write(zone+" "+str(temp)+" "+str(set_p)+" "+s+"\n")
                 
             f.flush()
             

@@ -126,11 +126,11 @@ class Temperature_Thread(Thread):
     def get_current_device_temp(self, device):
         if device in self.current_temps:
             if None == self.current_temps[device]:
-                return 0.0
+                return -1000.0
             else:
                 return self.current_temps[device]
         print "WARNING:",device,"not found" 
-        return "ERROR"
+        return -1000.0
     
     def get_history(self, days=1, seconds=0):
         
