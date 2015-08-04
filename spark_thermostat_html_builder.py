@@ -69,8 +69,10 @@ def build_html_file(filename, thermostat, user_thread, furnace_control):
         f.close()
     
     devices = thermostat.getDeviceNames()
+    prettyDevNames = thermostat.getPrettyDeviceNames()
     
-    content = template_contents % (user_thread.get_history(), \
+    content = template_contents % ([ (','+d) for d in prettyDevNames ], \
+                                   user_thread.get_history(), \
                                    furnace_control.get_history(), \
                                    thermostat.get_average_temp(), \
                                    thermostat.get_current_device_temp(devices[2]), \
