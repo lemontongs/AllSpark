@@ -40,14 +40,15 @@ class Spark_Interface():
         
         token = None
         for token_data in j:
-            expires = datetime.strptime(token_data['expires_at'][0:-5], "%Y-%m-%dT%H:%M:%S") 
-            if expires < now:
-                # delete
-                r = requests.delete(base_url+"access_tokens/"+token_data['token'], auth=(username, password))
-                if r.status_code != 200:
-                    print "Warning: Could not delete token ("+token_data['token']+"): "+r.reason
-            else:
-                token = token_data['token']
+            if ('expires_at' in token_data) and (token_data['expires_at'] != None) and ('client' in token_data) and (token_data['client'] == 'spark-cli')
+                expires = datetime.strptime(token_data['expires_at'][0:-5], "%Y-%m-%dT%H:%M:%S") 
+                if expires < now:
+                    # delete
+                    r = requests.delete(base_url+"access_tokens/"+token_data['token'], auth=(username, password))
+                    if r.status_code != 200:
+                        print "Warning: Could not delete token ("+token_data['token']+"): "+r.reason
+                else:
+                    token = token_data['token']
         
         if token == None:
             # create new token
