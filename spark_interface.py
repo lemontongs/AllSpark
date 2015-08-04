@@ -80,7 +80,7 @@ class Spark_Interface():
         if self.initialized:
             return [ n[0] for n in self.devices ]
         
-    def getPrettyDeviceName(self):
+    def getPrettyDeviceNames(self):
         if self.initialized:
             return [ n[0].replace('_floor_temp','') for n in self.devices ]
         
