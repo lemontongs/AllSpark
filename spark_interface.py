@@ -68,6 +68,9 @@ class Spark_Interface():
         
         self.devices = [ (x['name'], x['id']) for x in r.json() if x['name'].endswith('floor_temp') ]
         
+        for device in [ n[0] for n in self.devices ]:
+            print device
+        
         self.initialized = True
     
     def isInitialized(self):
