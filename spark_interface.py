@@ -66,7 +66,7 @@ class Spark_Interface():
             print "Error: Could not get devices: " + r.reason
             self.devices = []
         
-        self.devices = [ (x['name'], x['id']) for x in r.json() ]
+        self.devices = [ (x['name'], x['id']) for x in r.json() if x['name'].endswith('floor_temp') ]
         
         self.initialized = True
     
