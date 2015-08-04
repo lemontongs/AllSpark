@@ -40,7 +40,7 @@ class Spark_Interface():
         
         token = None
         for token_data in j:
-            if ('expires_at' in token_data) and (token_data['expires_at'] != None) and ('client' in token_data) and (token_data['client'] == 'spark-cli')
+            if ('expires_at' in token_data) and (token_data['expires_at'] != None) and ('client' in token_data) and (token_data['client'] == 'spark-cli'):
                 expires = datetime.strptime(token_data['expires_at'][0:-5], "%Y-%m-%dT%H:%M:%S") 
                 if expires < now:
                     # delete
