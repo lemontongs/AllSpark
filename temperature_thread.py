@@ -30,6 +30,10 @@ class Temperature_Thread(Thread):
             print config_sec + " section missing from config file"
             return
 
+        if "temp_data_dir" not in config.options(config_sec):
+            print "temp_data_dir property missing from " + config_sec + " section"
+            return
+
         if "data_file" not in config.options(config_sec):
             print "data_file property missing from " + config_sec + " section"
             return
@@ -52,12 +56,10 @@ class Temperature_Thread(Thread):
              self.current_temps[device] = None
         self.current_average_temperature = 0.0
 
-        try:
-            self.file_handle = open(self.filename, 'a+')
-            self.file_handle.seek(0,2)
-        except:
-            print "Failed to open", self.filename, ":", sys.exc_info()[1]
-            return
+        # Create the data directory if it does not exist
+        self.temp_data_directory = config.get(config_sec, "temp_data_dir")
+        if not os.path.exists(self.temp_data_directory):
+            os.makedirs(self.temp_data_directory)
         
         self.initialized = True
     
@@ -78,11 +80,48 @@ class Temperature_Thread(Thread):
         
         return self.spark.getPrettyDeviceNames()
     
+    
+    def setup_data_file(self):
+        
+        if not self.initialized:
+            print "Warning: Temperature_Thread: setup_data_file called before initialized."
+            return
+        
+        today = datetime.date.today().strftime('temperatures_%Y_%m_%d.csv')
+        todays_filename = self.temp_data_directory + "/" + today
+        
+        # If the file is currently open, close it
+        if hasattr(self, 'file_handle') and not self.file_handle.closed:
+            self.file_handle.close()
+        
+        # If the "today" link exists, delete it
+        if os.path.islink(self.filename):
+            os.unlink(self.filename)
+        
+        # Touch todays data file (does nothing if it already exists)
+        open(todays_filename, 'a').close()
+        
+        # Create the "today" link to todays data file
+        os.symlink(today, self.filename)
+        
+        # Open the link as a data file
+        try:
+            self.file_handle = open(self.filename, 'a+')
+            self.file_handle.seek(0,2)
+        except:
+            print "Temperature_Thread: Failed to open", self.filename, ":", sys.exc_info()[1]
+            return
+        
+    
     def run(self):
         
         if not self.initialized:
             print "Warning: Temperature_Thread started before initialized, not running."
             return
+        
+        self.setup_data_file()
+        
+        last_day = time.localtime().tm_mday
         
         self.running = self.run_lock.acquire()
         while self.running:
@@ -107,9 +146,16 @@ class Temperature_Thread(Thread):
           
             if count > 0:
                 self.current_average_temperature = x / count
-          
+            
+            # Check if file needs to be changed
             self.mutex.acquire()
-            self.file_handle.write(str(time.time()))
+            now = time.time()
+            if time.localtime(now).tm_mday != last_day:
+                last_day = time.localtime(now).tm_mday
+                self.setup_data_file()
+            
+            # Write to the file
+            self.file_handle.write(str(now))
             for device in self.device_names:
                 self.file_handle.write("," + t[device])
             self.file_handle.write("\n")
@@ -139,44 +185,44 @@ class Temperature_Thread(Thread):
         print "WARNING:",device,"not found" 
         return -1000.0
     
-    def get_history(self, days=1, seconds=0):
-        
-        # start_time is "now" minus days and seconds
-        # only this much data will be shown
-        start_time = datetime.datetime.now() - datetime.timedelta(days,seconds)
-        
-        # Load the data from the file
-        self.mutex.acquire()
-        file_handle = open(self.filename, 'r')
-        csvreader = csv.reader(file_handle)
-        tempdata = []
-        try:
-            for row in csvreader:
-                tempdata.append(row)
-        except csv.Error, e:
-            print 'ERROR: file %s, line %d: %s' % (self.filename, csvreader.line_num, e)
-        self.mutex.release()
-        
-        # Build the return string
-        return_string = ""
-        for i, row in enumerate(tempdata):
-            
-            # Skip the ones before the start_time
-            dt = datetime.datetime.fromtimestamp(float(row[0]))
-            if dt < start_time:
-                continue
-            
-            time = dt.strftime('%I:%M:%S %p')
-            temp1 = row[1]
-            temp2 = row[2]
-            temp3 = row[3]
-            
-            return_string += ("        ['%s',  %s, %s, %s],\n" % (time,temp1,temp2,temp3))
-        
-        if len(return_string) > 2:
-            return_string = return_string[:-2]
-        
-        return return_string
+#    def get_history(self, days=1, seconds=0):
+#        
+#        # start_time is "now" minus days and seconds
+#        # only this much data will be shown
+#        start_time = datetime.datetime.now() - datetime.timedelta(days,seconds)
+#        
+#        # Load the data from the file
+#        self.mutex.acquire()
+#        file_handle = open(self.filename, 'r')
+#        csvreader = csv.reader(file_handle)
+#        tempdata = []
+#        try:
+#            for row in csvreader:
+#                tempdata.append(row)
+#        except csv.Error, e:
+#            print 'ERROR: file %s, line %d: %s' % (self.filename, csvreader.line_num, e)
+#        self.mutex.release()
+#        
+#        # Build the return string
+#        return_string = ""
+#        for i, row in enumerate(tempdata):
+#            
+#            # Skip the ones before the start_time
+#            dt = datetime.datetime.fromtimestamp(float(row[0]))
+#            if dt < start_time:
+#                continue
+#            
+#            time = dt.strftime('%I:%M:%S %p')
+#            temp1 = row[1]
+#            temp2 = row[2]
+#            temp3 = row[3]
+#            
+#            return_string += ("        ['%s',  %s, %s, %s],\n" % (time,temp1,temp2,temp3))
+#        
+#        if len(return_string) > 2:
+#            return_string = return_string[:-2]
+#        
+#        return return_string
             
             
             

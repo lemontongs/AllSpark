@@ -6,14 +6,16 @@
         1: List of floor names          (string)
         2: Table of user data           (string)
         3: Table of furnace data        (string)
-        4: Average temperature          (float)
-        5: Top current temperature      (float)
-        6: Top current set point        (float)
-        7: Main current temperature     (float)
-        8: Main current set point       (float)
-        9: Basement current temperature (float)
-       10: Basement current set point   (float)
-       11: Is someone home?             (string)
+        4: Temperature data filename    (string)
+        5: Memory data filename         (string)
+        6: Average temperature          (float)
+        7: Top current temperature      (float)
+        8: Top current set point        (float)
+        9: Main current temperature     (float)
+       10: Main current set point       (float)
+       11: Basement current temperature (float)
+       12: Basement current set point   (float)
+       13: Is someone home?             (string)
     
     -->
   <head>
@@ -76,7 +78,7 @@
             {
                 var rows = data.split("\n");
                 
-                var result = [['Time' %s ]]; // , '1st', 'B', '2nd'
+                var result = [['Time' %s ]]; // , 'first', 'second', 'basement'                     //   FLOOR NAMES
                 
                 for ( var i = 0; i < rows.length; i++)
                 {
@@ -191,8 +193,8 @@
             
             
             $(document).ready(function () {          
-                $.get("floor_temps.csv", function (data) { drawTempData(data); });
-                $.get("mem_usage.csv",   function (data) { drawMemData(data); });
+                $.get("%s", function (data) { drawTempData(data); });                   //   TEMPERATURE DATA FILENAME
+                $.get("%s", function (data) { drawMemData(data);  });                   //   MEMORY DATA FILENAME
                 drawUserData();
                 drawFurnaceData();
             });

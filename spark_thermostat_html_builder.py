@@ -74,6 +74,8 @@ def build_html_file(filename, thermostat, user_thread, furnace_control):
     content = template_contents % (''.join([ (", '"+d+"'") for d in prettyDevNames ]), \
                                    user_thread.get_history(), \
                                    furnace_control.get_history(), \
+                                   thermostat.filename, \
+                                   "data/mem_usage.csv", \
                                    thermostat.get_average_temp(), \
                                    thermostat.get_current_device_temp(devices[2]), \
                                    furnace_ctrl.get_set_point(devices[2]), \
