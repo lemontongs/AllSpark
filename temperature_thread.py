@@ -71,6 +71,13 @@ class Temperature_Thread(Thread):
         
         return self.device_names
     
+    def getPrettyDeviceNames(self):
+        if not self.initialized:
+            print "Warning: getPrettyDeviceNames called before initialized"
+            return []
+        
+        return self.spark.getPrettyDeviceNames()
+    
     def run(self):
         
         if not self.initialized:
