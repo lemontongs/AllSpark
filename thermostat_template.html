@@ -16,6 +16,7 @@
        11: Basement current temperature (float)
        12: Basement current set point   (float)
        13: Is someone home?             (string)
+       13: Front door state             (string)
     
     -->
   <head>
@@ -224,6 +225,7 @@
               <li><a href="#thermostats">Thermostats</a></li>
               <li><a href="#plot"       >Plot</a></li>
               <li><a href="#whosehome"  >Who is home?</a></li>
+              <li><a href="#security"   >Security</a></li>
               <li><a href="#sysinfo"    >System Info</a></li>
             </ul>
           </div><!--/.nav-collapse -->
@@ -347,6 +349,15 @@
           <div class="col-md-12">
             <h2>Someone is home: %s</h2>                                                   <!-- SOMEONE IS HOME -->
             <div id="user_chart_div"></div>
+          </div>
+        </div>
+      </div>
+      
+      
+      <div id="security" class="jumbotron">
+        <div class="row">
+          <div class="col-md-12">
+            <h2>Security: %s</h2>                                                         <!-- SECURITY STATE -->
           </div>
         </div>
       </div>

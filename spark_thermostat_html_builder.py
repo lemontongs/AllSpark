@@ -6,11 +6,8 @@ import os
 import sys
 import signal
 import time
-import comms_thread
-import temperature_thread
-import user_thread
-import memory_thread
-import furnace_control
+
+import object_group
 
 DEBUG = False
 
@@ -57,7 +54,7 @@ def write_template_config():
     c.write(open("temp.cfg","wb"))
 
 
-def build_html_file(filename, thermostat, user_thread, furnace_control):
+def build_html_file(filename, og):
     global template_contents
     
     if DEBUG:
@@ -68,22 +65,23 @@ def build_html_file(filename, thermostat, user_thread, furnace_control):
         template_contents = f.read()
         f.close()
     
-    devices = thermostat.getDeviceNames()
-    prettyDevNames = thermostat.getPrettyDeviceNames()
+    devices = og.thermostat.getDeviceNames()
+    prettyDevNames = og.thermostat.getPrettyDeviceNames()
     
     content = template_contents % (''.join([ (", '"+d+"'") for d in prettyDevNames ]), \
-                                   user_thread.get_history(), \
-                                   furnace_control.get_history(), \
-                                   thermostat.filename, \
-                                   "data/mem_usage.csv", \
-                                   thermostat.get_average_temp(), \
-                                   thermostat.get_current_device_temp(devices[2]), \
-                                   furnace_ctrl.get_set_point(devices[2]), \
-                                   thermostat.get_current_device_temp(devices[0]), \
-                                   furnace_ctrl.get_set_point(devices[0]), \
-                                   thermostat.get_current_device_temp(devices[1]), \
-                                   furnace_ctrl.get_set_point(devices[1]), \
-                                   user_thread.get_is_someone_home())
+                                   og.user_thread.get_history(), \
+                                   og.furnace_ctrl.get_history(), \
+                                   og.thermostat.filename, \
+                                   og.mem.filename, \
+                                   og.thermostat.get_average_temp(), \
+                                   og.thermostat.get_current_device_temp(devices[2]), \
+                                   og.furnace_ctrl.get_set_point(devices[2]), \
+                                   og.thermostat.get_current_device_temp(devices[0]), \
+                                   og.furnace_ctrl.get_set_point(devices[0]), \
+                                   og.thermostat.get_current_device_temp(devices[1]), \
+                                   og.furnace_ctrl.get_set_point(devices[1]), \
+                                   og.user_thread.get_is_someone_home(), \
+                                   og.security.getSensorStates())
     
     if DEBUG:
         print "writing file"
@@ -148,90 +146,22 @@ if not os.path.exists(data_dir):
     os.makedirs(data_dir)
 
 ############################################################################
-# Thermostat Thread
+# Instantiate and initialize threads
 ############################################################################
+og = object_group.Object_Group(config)
 
-thermostat = temperature_thread.Temperature_Thread(config = config)
-
-if not thermostat.isInitialized():
-    print "Error creating temperature thread"
+if not og.initialized:
+    print "Error creating threads"
     sys.exit(1)
 
-thermostat.start()
-
-############################################################################
-# User Thread
-############################################################################
-user = user_thread.User_Thread(config = config)
-
-if not user.isInitialized():
-    print "Error creating user thread"
-    thermostat.stop()
-    sys.exit(1)
-
-user.start()
-
-############################################################################
-# Memory Thread
-############################################################################
-mem = memory_thread.Memory_Thread(config = config)
-
-if not mem.isInitialized():
-    print "Error creating memory thread"
-    thermostat.stop()
-    user.stop()
-    sys.exit(1)
-
-mem.start()
-
-############################################################################
-# Furnace Control Thread
-############################################################################
-
-furnace_ctrl = furnace_control.Furnace_Control \
-    (thermostat, \
-     user, \
-     "data/set_points.cfg", \
-     "data/furnace_state.csv")
-
-if not furnace_ctrl.isInitialized():
-    print "Error creating furnace controller"
-    thermostat.stop()
-    user.stop()
-    mem.stop()
-    sys.exit(1)
-
-furnace_ctrl.start()
-
-############################################################################
-# Comms Thread
-############################################################################
-
-comms = comms_thread.Comms_Thread()
-
-if not comms.isInitialized():
-    print "Error creating comms thread"
-    thermostat.stop()
-    user.stop()
-    mem.stop()
-    furnace_ctrl.stop()
-    sys.exit(1)
-
-comms.register_callback("set_point", furnace_ctrl.parse_set_point_message)
-comms.start()
-
+og.start()
 
 ############################################################################
 # Cleanup
 ############################################################################
-
 def receive_signal(signum, stack):
     print "Caught signal:", str(signum), "closing threads..."
-    thermostat.stop()
-    user.stop()
-    mem.stop()
-    furnace_ctrl.stop()
-    comms.stop()
+    og.stop()
     os._exit(0)
 
 signal.signal(signal.SIGINT, receive_signal)
@@ -241,7 +171,7 @@ signal.signal(signal.SIGINT, receive_signal)
 ############################################################################
 
 while True:
-    build_html_file(html_filename, thermostat, user, furnace_ctrl)
+    build_html_file(html_filename, og)
     #os.system("/home/mlamonta/bin/blink1-tool -q --hsb=130,200,50")
     time.sleep(60)
     #os.system("/home/mlamonta/bin/blink1-tool -q --off")

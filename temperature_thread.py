@@ -17,7 +17,7 @@ from threading import Thread, Lock
 #
 
 class Temperature_Thread(Thread):
-    def __init__(self, config):
+    def __init__(self, config, spark_if):
         Thread.__init__(self)
         self.initialized = False
         self.mutex = Lock()
@@ -38,18 +38,8 @@ class Temperature_Thread(Thread):
             print "data_file property missing from " + config_sec + " section"
             return
 
-        if "spark_auth_file" not in config.options(config_sec):
-            print "spark_auth_file property missing from " + config_sec + " section"
-            return
-
         self.filename = config.get(config_sec, "data_file")
-        spark_auth_filename = config.get(config_sec, "spark_auth_file")
-        self.spark = spark_interface.Spark_Interface(spark_auth_filename)
-        
-        if not self.spark.isInitialized():
-            print "Error: spark_interface failed to initialize"
-            return
-
+        self.spark = spark_if
         self.device_names = self.spark.getDeviceNames()
         
         for device in self.device_names:

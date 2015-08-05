@@ -103,6 +103,35 @@ class Spark_Interface():
         except:
             return None
 
+    def callNamedDeviceFunction(self, deviceName, func, args, return_key):
+        
+        # Get device ID
+        r = requests.get(base_url+"devices"+self.access_token)
+        
+        if r.status_code != 200:
+            print "Error: Could not get devices: " + r.reason
+            return None
+        
+        devices = [ (x['name'], x['id']) for x in r.json() if x['name'] == deviceName ]
+        
+        if len(devices) < 1:
+            print "Error: Could not find device with name: " + deviceName
+            return None
+        
+        device_id = devices[0][1]
+        
+        r = requests.post(base_url+"devices/"+device_id+"/"+func, \
+                          data={'access_token':self.access_token.split('=')[1], 'args':args})
+        
+        if r.status_code != 200:
+            print "Error: Could not get: "+r.reason
+            return None
+        
+        if return_key not in r.json():
+            print "Error: " + return_key + " not found in response: " + r.json()
+            return None
+        
+        return r.json()[return_key]
 
 
 if __name__ == "__main__":
