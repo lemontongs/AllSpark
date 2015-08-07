@@ -357,7 +357,19 @@
       <div id="security" class="jumbotron">
         <div class="row">
           <div class="col-md-12">
-            <h2>Security: %s</h2>                                                         <!-- SECURITY STATE -->
+            <h2>Security:</h2>
+            <table class="table table-condensed">
+                <thead>
+                    <tr>
+                        <th>Zone</th>
+                        <th>State</th>
+                        <th>Last Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    %s                                                                     <!-- SECURITY STATE -->
+                </tbody>
+            </table>
           </div>
         </div>
       </div>

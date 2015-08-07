@@ -7,7 +7,8 @@ import datetime
 import psutil
 from threading import Thread, Lock
 
-
+OPEN   = 0
+CLOSED = 1
 
 class Security_Thread(Thread):
     def __init__(self, config, spark_if):
@@ -43,7 +44,7 @@ class Security_Thread(Thread):
                 print zone_index+" property missing from " + config_sec + " section"
                 return
                 
-            self.zones.append(config.get(config_sec, zone_index))
+            self.zones.append( {'last':time.localtime(), 'state':CLOSED, 'name':config.get(config_sec, zone_index)} )
 
         print self.zones
 
@@ -87,7 +88,35 @@ class Security_Thread(Thread):
           for zone in range(self.num_zones):
               zone_index = "zone_"+str(zone)
               state = self.spark.callNamedDeviceFunction( self.monitor_device_name, "digitalread", "D"+str(zone), "return_value")
-              self.sensor_states = self.sensor_states + "<br>"+self.zones[zone]+": "+str(state)
+              
+              # record state changes
+              if state != self.zones[zone]['state']:
+                  self.zones[zone]['state'] = state
+                  self.zones[zone]['last']  = time.localtime()
+              
+              # <tr class="success">
+              #     <td>Zone 1</td>
+              #     <td>Open</td>
+              #     <td>Yesterday</td>
+              # </tr>
+              
+              entry = '<tr class="'
+              if state == CLOSED:
+                entry += 'success">'
+              else:
+                entry += 'danger">'
+              
+              entry += '<td>'+self.zones[zone]['name']+'</td>'
+              
+              if state == CLOSED:
+                entry += "<td>closed</td>"
+              else:
+                entry += "<td>open</td>"
+              
+              entry += '<td>'+ time.strftime('%b %d %I:%M%p', self.zones[zone]['last']) +'</td>'
+              
+              self.sensor_states += entry
+              
           self.mutex.release()
           
           time.sleep(self.collect_period)
