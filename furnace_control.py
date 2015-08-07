@@ -21,9 +21,9 @@ import utilities
 
 
 class Furnace_Control(Thread):
-    def __init__(self, thermostat, user, set_point_filename, furnace_state_filename):
+    def __init__(self, object_group, set_point_filename, furnace_state_filename):
         Thread.__init__(self)
-        
+        self.og = object_group
         self.initialized = False
         self.set_point_lock = Lock()
         
@@ -31,9 +31,6 @@ class Furnace_Control(Thread):
         if USING_RPI_GPIO and (os.geteuid() != 0):
             print "ERROR: Running in non-privaleged mode, Furnace_Control not running" 
             return
-        
-        self.thermostat = thermostat
-        self.user = user
         
         # Create the set point file if it does not yet exist
         self.set_point_config = ConfigParser.ConfigParser()
@@ -80,7 +77,7 @@ class Furnace_Control(Thread):
             self.set_point_config.add_section(self.ctrl_pins_section)
             self.set_point_config.add_section(self.user_rule_section)
             
-            for device in self.thermostat.getDeviceNames():
+            for device in self.og.thermostat.getDeviceNames():
                 self.set_point_config.set(self.set_point_section, device, "65.0")
                 self.set_point_config.set(self.ctrl_pins_section, device, "None")
             
@@ -93,7 +90,7 @@ class Furnace_Control(Thread):
             if not self.set_point_config.has_section(self.ctrl_pins_section):
                 self.set_point_config.add_section(self.ctrl_pins_section)
             
-            for device in self.thermostat.getDeviceNames():
+            for device in self.og.thermostat.getDeviceNames():
             
                 if not self.set_point_config.has_option(self.set_point_section, device):
                     self.set_point_config.set(self.set_point_section, device, "65.0")
@@ -103,7 +100,7 @@ class Furnace_Control(Thread):
                 
         # verify the contents of the file, and create the zones structure
         self.zones = {}
-        for device in self.thermostat.getDeviceNames():
+        for device in self.og.thermostat.getDeviceNames():
             
             t = 65.0
             try:
@@ -194,7 +191,7 @@ class Furnace_Control(Thread):
             # if any of the users are home AND have this zone in there list, 
             # use the custom set point (from the set point file)
             for user in self.rules['rules']:
-                if self.user.is_user_home(user) and (zone_name in self.rules['rules'][user]):
+                if self.og.user_thread.is_user_home(user) and (zone_name in self.rules['rules'][user]):
                     set_point = self.zones[zone_name]['set_point']
                     break
             
@@ -250,7 +247,7 @@ class Furnace_Control(Thread):
             
             for zone in self.zones:
                 
-                temp = self.thermostat.get_current_device_temp(zone)
+                temp = self.og.thermostat.get_current_device_temp(zone)
                 pin = self.zones[zone]['pin']
                 set_p = self.get_set_point(zone)
                 

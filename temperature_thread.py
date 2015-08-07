@@ -17,8 +17,9 @@ from threading import Thread, Lock
 #
 
 class Temperature_Thread(Thread):
-    def __init__(self, config, spark_if):
+    def __init__(self, object_group, config):
         Thread.__init__(self)
+        self.og = object_group
         self.initialized = False
         self.mutex = Lock()
         self.run_lock = Lock()
@@ -39,8 +40,7 @@ class Temperature_Thread(Thread):
             return
 
         self.filename = config.get(config_sec, "data_file")
-        self.spark = spark_if
-        self.device_names = self.spark.getDeviceNames()
+        self.device_names = self.og.spark.getDeviceNames()
         
         for device in self.device_names:
              self.current_temps[device] = None
@@ -68,7 +68,7 @@ class Temperature_Thread(Thread):
             print "Warning: getPrettyDeviceNames called before initialized"
             return []
         
-        return self.spark.getPrettyDeviceNames()
+        return self.og.spark.getPrettyDeviceNames()
     
     
     def setup_data_file(self):
@@ -121,7 +121,7 @@ class Temperature_Thread(Thread):
             count = 0
             for device in self.device_names:
               
-                t[device] = self.spark.getVariable(device, "temperature")
+                t[device] = self.og.spark.getVariable(device, "temperature")
               
                 try:
                     x = x + float(t[device])

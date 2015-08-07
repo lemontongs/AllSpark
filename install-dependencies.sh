@@ -16,7 +16,12 @@ apt-get -y install python-psutil
 
 # python zeroMQ libraries
 apt-get -y install python-zmq
-apt-get -y install python-pip
+
+apt-get -y remove python-pip
+wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py
+python get-pip.py
+rm get-pip.py 
+
 pip install pyzmq
 
 # python requests (for spark REST api)

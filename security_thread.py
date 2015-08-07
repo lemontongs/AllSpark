@@ -11,14 +11,13 @@ OPEN   = 0
 CLOSED = 1
 
 class Security_Thread(Thread):
-    def __init__(self, config, spark_if):
+    def __init__(self, object_group, config):
         Thread.__init__(self)
+        self.og = object_group
         self.initialized = False
         self.mutex = Lock()
         self.running = False
         config_sec = "security_thread"
-
-        self.spark = spark_if
 
         if config_sec not in config.sections():
             print config_sec + " section missing from config file"
@@ -87,7 +86,7 @@ class Security_Thread(Thread):
           self.sensor_states = ""
           for zone in range(self.num_zones):
               zone_index = "zone_"+str(zone)
-              state = self.spark.callNamedDeviceFunction( self.monitor_device_name, "digitalread", "D"+str(zone), "return_value")
+              state = self.og.spark.callNamedDeviceFunction( self.monitor_device_name, "digitalread", "D"+str(zone), "return_value")
               
               # record state changes
               if state != self.zones[zone]['state']:

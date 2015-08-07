@@ -17,8 +17,9 @@ from threading import Thread, Lock
 #
 
 class Memory_Thread(Thread):
-    def __init__(self, config):
+    def __init__(self, object_group, config):
         Thread.__init__(self)
+        self.og = object_group
         self.initialized = False
         self.mutex = Lock()
         self.running = False

@@ -7,9 +7,9 @@ import os
 import zmq
 
 class Comms_Thread(Thread):
-    def __init__(self):
+    def __init__(self, object_group):
         Thread.__init__(self)
-        
+        self.og = object_group
         self.initialized = False
         self.run_lock = Lock()
         

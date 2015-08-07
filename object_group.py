@@ -21,7 +21,7 @@ class Object_Group():
 
         spark_auth_filename = config.get("general", "spark_auth_file")
         
-        self.spark = spark_interface.Spark_Interface(spark_auth_filename)
+        self.spark = spark_interface.Spark_Interface(self, spark_auth_filename)
         
         if not self.spark.isInitialized():
             print "Error creating spark interface"
@@ -31,7 +31,7 @@ class Object_Group():
         ############################################################################
         # Temperature Thread
         ############################################################################
-        self.thermostat = temperature_thread.Temperature_Thread(config = config, spark_if = self.spark)
+        self.thermostat = temperature_thread.Temperature_Thread(self, config = config)
 
         if not self.thermostat.isInitialized():
             print "Error creating temperature thread"
@@ -41,7 +41,7 @@ class Object_Group():
         ############################################################################
         # User Thread
         ############################################################################
-        self.user_thread = user_thread.User_Thread(config = config)
+        self.user_thread = user_thread.User_Thread(self, config = config)
 
         if not self.user_thread.isInitialized():
             print "Error creating user thread"
@@ -51,7 +51,7 @@ class Object_Group():
         ############################################################################
         # Memory Thread
         ############################################################################
-        self.mem = memory_thread.Memory_Thread(config = config)
+        self.mem = memory_thread.Memory_Thread(self, config = config)
 
         if not self.mem.isInitialized():
             print "Error creating memory thread"
@@ -62,10 +62,7 @@ class Object_Group():
         # Furnace Control Thread
         ############################################################################
         self.furnace_ctrl = furnace_control.Furnace_Control \
-            (self.thermostat, \
-             self.user_thread, \
-             "data/set_points.cfg", \
-             "data/furnace_state.csv")
+            (self, "data/set_points.cfg", "data/furnace_state.csv")
 
         if not self.furnace_ctrl.isInitialized():
             print "Error creating furnace controller"
@@ -75,7 +72,7 @@ class Object_Group():
         ############################################################################
         # Comms Thread
         ############################################################################
-        self.comms = comms_thread.Comms_Thread()
+        self.comms = comms_thread.Comms_Thread(self)
 
         if not self.comms.isInitialized():
             print "Error creating comms thread"
@@ -86,7 +83,7 @@ class Object_Group():
         ############################################################################
         # Security Thread
         ############################################################################
-        self.security = security_thread.Security_Thread(config = config, spark_if = self.spark)
+        self.security = security_thread.Security_Thread(self, config = config)
 
         if not self.security.isInitialized():
             print "Error creating security thread"
@@ -102,6 +99,7 @@ class Object_Group():
             self.user_thread.start()
             self.mem.start()
             self.furnace_ctrl.start()
+            self.comms.start()
             self.security.start()
             self.running = True
 

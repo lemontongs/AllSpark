@@ -8,8 +8,8 @@ import time
 base_url = 'https://api.spark.io/v1/'
 
 class Spark_Interface():
-    def __init__(self, auth_filename = "spark_auth.txt"):
-        
+    def __init__(self, object_group, auth_filename = "spark_auth.txt"):
+        self.og = object_group
         self.initialized = False
         
         if not os.access(auth_filename, os.R_OK):
