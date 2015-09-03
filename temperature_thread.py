@@ -1,6 +1,4 @@
-import csv
 import os
-import spark_interface
 import sys
 import time
 import datetime
@@ -40,10 +38,10 @@ class Temperature_Thread(Thread):
             return
 
         self.filename = config.get(config_sec, "data_file")
-        self.device_names = self.og.spark.getDeviceNames()
+        self.device_names = self.og.spark.getDeviceNames(postfix="_floor_temp")
         
         for device in self.device_names:
-             self.current_temps[device] = None
+            self.current_temps[device] = None
         self.current_average_temperature = 0.0
 
         # Create the data directory if it does not exist
@@ -68,7 +66,7 @@ class Temperature_Thread(Thread):
             print "Warning: getPrettyDeviceNames called before initialized"
             return []
         
-        return self.og.spark.getPrettyDeviceNames()
+        return self.og.spark.getPrettyDeviceNames(postfix="_floor_temp")
     
     
     def setup_data_file(self):
@@ -152,7 +150,7 @@ class Temperature_Thread(Thread):
             self.file_handle.flush()
             self.mutex.release()
             
-            for i in range(120):
+            for _ in range(120):
                 if self.running:
                     time.sleep(1)
         

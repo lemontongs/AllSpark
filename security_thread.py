@@ -1,14 +1,10 @@
-import csv
+
 import os
-import subprocess
-import sys
 import time
-import datetime
-import psutil
 from threading import Thread, Lock
 
-OPEN   = 0
-CLOSED = 1
+OPEN   = '0'
+CLOSED = '1'
 
 class Security_Thread(Thread):
     def __init__(self, object_group, config):
@@ -45,23 +41,14 @@ class Security_Thread(Thread):
                 
             self.zones.append( {'last':time.localtime(), 'state':CLOSED, 'name':config.get(config_sec, zone_index)} )
 
-        print self.zones
+        #print self.zones
 
         if "collect_period" not in config.options(config_sec):
             self.collect_period = 5
         else:
             self.collect_period = float(config.get(config_sec, "collect_period", True))
         
-#        try:
-#            self.file_handle = open(self.filename, 'a+')
-#            self.file_handle.seek(0,2)
-#        except:
-#            print "Failed to open", self.filename, ":", sys.exc_info()[1]
-#            return
-        
         self.sensor_states = ""
-        
-        
         self.initialized = True
     
     def isInitialized(self):
@@ -82,43 +69,46 @@ class Security_Thread(Thread):
         self.running = True
         while self.running:
           
-          self.mutex.acquire()
-          self.sensor_states = ""
-          for zone in range(self.num_zones):
-              zone_index = "zone_"+str(zone)
-              state = self.og.spark.callNamedDeviceFunction( self.monitor_device_name, "digitalread", "D"+str(zone), "return_value")
+            self.mutex.acquire()
+            self.sensor_states = ""
+            state_str = self.og.spark.getVariable( self.monitor_device_name, "state")
+            
+            for zone in range(self.num_zones):
+                
+                state = state_str[zone]
+                
+                # record state changes
+                if state != self.zones[zone]['state']:
+                    self.zones[zone]['state'] = state
+                    self.zones[zone]['last']  = time.localtime()
+    
+                # <tr class="success">
+                #     <td>Zone 1</td>
+                #     <td>Open</td>
+                #     <td>Yesterday</td>
+                # </tr>
+                
+                entry = '\n<tr class="'
+                if state == CLOSED:
+                    entry += 'success">\n'
+                else:
+                    entry += 'danger">\n'
+                
+                entry += '    <td>'+self.zones[zone]['name']+'</td>\n'
+                
+                if state == CLOSED:
+                    entry += "    <td>closed</td>\n"
+                else:
+                    entry += "    <td>open</td>\n"
+                
+                entry += '    <td>'+ time.strftime('%b %d %I:%M%p', self.zones[zone]['last']) +'</td>\n'
+                entry += '</tr>\n'
+                
+                self.sensor_states += entry
               
-              # record state changes
-              if state != self.zones[zone]['state']:
-                  self.zones[zone]['state'] = state
-                  self.zones[zone]['last']  = time.localtime()
-              
-              # <tr class="success">
-              #     <td>Zone 1</td>
-              #     <td>Open</td>
-              #     <td>Yesterday</td>
-              # </tr>
-              
-              entry = '<tr class="'
-              if state == CLOSED:
-                entry += 'success">'
-              else:
-                entry += 'danger">'
-              
-              entry += '<td>'+self.zones[zone]['name']+'</td>'
-              
-              if state == CLOSED:
-                entry += "<td>closed</td>"
-              else:
-                entry += "<td>open</td>"
-              
-              entry += '<td>'+ time.strftime('%b %d %I:%M%p', self.zones[zone]['last']) +'</td>'
-              
-              self.sensor_states += entry
-              
-          self.mutex.release()
+            self.mutex.release()
           
-          time.sleep(self.collect_period)
+            time.sleep(self.collect_period)
   
     def stop(self):
         self.running = False
@@ -138,7 +128,7 @@ if __name__ == "__main__":
     print "Collecting data (1 minute)..."
     time.sleep(60)
     
-    print sec.get_history()
+    #print sec.get_history()
     
     sec.stop()
 

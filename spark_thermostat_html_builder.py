@@ -1,7 +1,6 @@
 #! /usr/bin/python
 
 import ConfigParser
-import errno
 import os
 import sys
 import signal
@@ -94,7 +93,7 @@ def build_html_file(filename, og):
 def remove_file(filename):
     try:
         os.remove(filename)
-    except OSError as f:    # its OK if the file does not exist
+    except OSError:    # its OK if the file does not exist
         pass
 
 def check_permissions(filename):

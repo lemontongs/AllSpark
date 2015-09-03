@@ -1,9 +1,8 @@
 
 from datetime import datetime
 import os
-import pprint
 import requests
-import time
+from threading import Lock
 
 base_url = 'https://api.spark.io/v1/'
 
@@ -11,6 +10,7 @@ class Spark_Interface():
     def __init__(self, object_group, auth_filename = "spark_auth.txt"):
         self.og = object_group
         self.initialized = False
+        self.mutex = Lock()
         
         if not os.access(auth_filename, os.R_OK):
             print "Error: failure to read auth file ("+auth_filename+"). File unreadable or does not exist."
@@ -54,8 +54,8 @@ class Spark_Interface():
             # create new token
             r = requests.post("https://api.spark.io/oauth/token", data={'grant_type':'password','username':username,'password':password}, auth=('spark','spark'))
             if r.status_code != 200:
-                 print "Warning: Could not create token: "+r.reason
-                 return
+                print "Warning: Could not create token: "+r.reason
+                return
             token = r.json()['access_token']
         
         self.access_token = "?access_token="+token
@@ -66,82 +66,65 @@ class Spark_Interface():
             print "Error: Could not get devices: " + r.reason
             self.devices = []
         
-        self.devices = [ (x['name'], x['id']) for x in r.json() if x['name'].endswith('floor_temp') ]
+        self.devices = [ (x['name'], x['id']) for x in r.json() ]
         
         for device in [ n[0] for n in self.devices ]:
-            print device
+            print "Found particle device:", device
         
         self.initialized = True
     
     def isInitialized(self):
         return self.initialized
         
-    def getDeviceNames(self):
+    def getDeviceNames(self, postfix=None):
         if self.initialized:
-            return [ n[0] for n in self.devices ]
+            if postfix == None:
+                return [ n[0] for n in self.devices ]
+            else:
+                return [ n[0] for n in self.devices if n[0].endswith(postfix) ]
         
-    def getPrettyDeviceNames(self):
+    def getPrettyDeviceNames(self, postfix=None):
         if self.initialized:
-            return [ n[0].replace('_floor_temp','') for n in self.devices ]
-        
+            devs = self.getDeviceNames(postfix=postfix);
+            if postfix == None:
+                return devs
+            else:
+                return [ n[0].replace(postfix,'') for n in devs ]
+    
     def getVariable(self, deviceName, variable):
+        if self.initialized:
         
-        if deviceName not in [ n[0] for n in self.devices ]:
-            print "Error: requested device name ("+deviceName+") not found"
-            return None
-        
-        deviceID = [ n[1] for n in self.devices if n[0] == deviceName ]
-        
-        try:
-            r = requests.get(base_url+"devices/"+deviceID[0]+"/"+variable+self.access_token)
-            
-            if r.status_code != 200:
-                print "Error: Could not get: "+r.reason
+            if deviceName not in [ n[0] for n in self.devices ]:
+                print "Error: requested device name ("+deviceName+") not found"
                 return None
             
-            return r.json()['result']
-        except:
-            return None
-
-    def callNamedDeviceFunction(self, deviceName, func, args, return_key):
-        
-        # Get device ID
-        r = requests.get(base_url+"devices"+self.access_token)
-        
-        if r.status_code != 200:
-            print "Error: Could not get devices: " + r.reason
-            return None
-        
-        devices = [ (x['name'], x['id']) for x in r.json() if x['name'] == deviceName ]
-        
-        if len(devices) < 1:
-            print "Error: Could not find device with name: " + deviceName
-            return None
-        
-        device_id = devices[0][1]
-        
-        r = requests.post(base_url+"devices/"+device_id+"/"+func, \
-                          data={'access_token':self.access_token.split('=')[1], 'args':args})
-        
-        if r.status_code != 200:
-            print "Error: Could not get: "+r.reason
-            return None
-        
-        if return_key not in r.json():
-            print "Error: " + return_key + " not found in response: " + r.json()
-            return None
-        
-        return r.json()[return_key]
-
+            deviceID = [ n[1] for n in self.devices if n[0] == deviceName ]
+            
+            self.mutex.acquire()
+            result = None
+            try:
+                r = requests.get(base_url+"devices/"+deviceID[0]+"/"+variable+self.access_token)
+                
+                if r.status_code == 200:
+                    result = r.json()['result']
+                else:
+                    print "getVariable: Could not get '"+variable+"' from '"+deviceName+"': "+r.reason
+                
+            except:
+                pass
+            
+            self.mutex.release()
+            
+            return result
 
 if __name__ == "__main__":
     import sys
     
-    s = Spark_Interface(sys.argv[1])
-    devNames = s.getDeviceNames()
+    s = Spark_Interface(1, sys.argv[1])
+    devNames = s.getDeviceNames(postfix="_floor_temp")
     for d in devNames:
-        print d, s.getVariable(d,"temperature")
+        print d, ":", s.getVariable(d,"temperature")
     
-    
+    print "Security status:", s.getVariable("security","state")
     
 
