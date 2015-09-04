@@ -117,10 +117,8 @@ class Spark_Interface():
             
             return result
 
-if __name__ == "__main__":
-    import sys
-    
-    s = Spark_Interface(1, sys.argv[1])
+if __name__ == "__main__":    
+    s = Spark_Interface(1, "data/spark_auth.txt")
     devNames = s.getDeviceNames(postfix="_floor_temp")
     for d in devNames:
         print d, ":", s.getVariable(d,"temperature")

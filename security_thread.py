@@ -73,40 +73,41 @@ class Security_Thread(Thread):
             self.sensor_states = ""
             state_str = self.og.spark.getVariable( self.monitor_device_name, "state")
             
-            for zone in range(self.num_zones):
-                
-                state = state_str[zone]
-                
-                # record state changes
-                if state != self.zones[zone]['state']:
-                    self.zones[zone]['state'] = state
-                    self.zones[zone]['last']  = time.localtime()
-    
-                # <tr class="success">
-                #     <td>Zone 1</td>
-                #     <td>Open</td>
-                #     <td>Yesterday</td>
-                # </tr>
-                
-                entry = '\n<tr class="'
-                if state == CLOSED:
-                    entry += 'success">\n'
-                else:
-                    entry += 'danger">\n'
-                
-                entry += '    <td>'+self.zones[zone]['name']+'</td>\n'
-                
-                if state == CLOSED:
-                    entry += "    <td>closed</td>\n"
-                else:
-                    entry += "    <td>open</td>\n"
-                
-                entry += '    <td>'+ time.strftime('%b %d %I:%M%p', self.zones[zone]['last']) +'</td>\n'
-                entry += '</tr>\n'
-                
-                self.sensor_states += entry
-              
-            self.mutex.release()
+            if state_str != None:
+                for zone in range(self.num_zones):
+                    
+                    state = state_str[zone]
+                    
+                    # record state changes
+                    if state != self.zones[zone]['state']:
+                        self.zones[zone]['state'] = state
+                        self.zones[zone]['last']  = time.localtime()
+        
+                    # <tr class="success">
+                    #     <td>Zone 1</td>
+                    #     <td>Open</td>
+                    #     <td>Yesterday</td>
+                    # </tr>
+                    
+                    entry = '\n<tr class="'
+                    if state == CLOSED:
+                        entry += 'success">\n'
+                    else:
+                        entry += 'danger">\n'
+                    
+                    entry += '    <td>'+self.zones[zone]['name']+'</td>\n'
+                    
+                    if state == CLOSED:
+                        entry += "    <td>closed</td>\n"
+                    else:
+                        entry += "    <td>open</td>\n"
+                    
+                    entry += '    <td>'+ time.strftime('%b %d %I:%M%p', self.zones[zone]['last']) +'</td>\n'
+                    entry += '</tr>\n'
+                    
+                    self.sensor_states += entry
+                  
+                self.mutex.release()
           
             time.sleep(self.collect_period)
   
