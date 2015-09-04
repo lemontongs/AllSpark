@@ -6,6 +6,7 @@ import memory_thread
 import furnace_control
 import security_thread
 import spark_interface
+import twilio_interface
 
 class Object_Group():
     def __init__(self, config):
@@ -87,6 +88,15 @@ class Object_Group():
 
         if not self.security.isInitialized():
             print "Error creating security thread"
+            return
+        
+        ############################################################################
+        # Twilio
+        ############################################################################
+        self.twilio = twilio_interface.Twilio_Interface(config = config)
+
+        if not self.twilio.isInitialized():
+            print "Error creating twilio interface"
             return
         
         

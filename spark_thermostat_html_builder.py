@@ -79,7 +79,7 @@ def build_html_file(filename, og):
                                    og.furnace_ctrl.get_set_point(devices[0]), \
                                    og.thermostat.get_current_device_temp(devices[1]), \
                                    og.furnace_ctrl.get_set_point(devices[1]), \
-                                   og.user_thread.get_is_someone_home(), \
+                                   og.user_thread.is_someone_present_string(), \
                                    og.security.getSensorStates())
     
     if DEBUG:

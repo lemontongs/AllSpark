@@ -23,6 +23,7 @@ python get-pip.py
 rm get-pip.py 
 
 pip install pyzmq
+pip install twilio
 
 # python requests (for spark REST api)
 pip install requests --upgrade

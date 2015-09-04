@@ -22,14 +22,18 @@ class Security_Thread(Thread):
         if "monitor_device_name" not in config.options(config_sec):
             print "monitor_device_name property missing from " + config_sec + " section"
             return
-
         self.monitor_device_name = config.get(config_sec, "monitor_device_name")
 
+        if "breach_number" not in config.options(config_sec):
+            print "breach_number property missing from " + config_sec + " section"
+            return
+        self.breach_number = int(config.get(config_sec, "breach_number"))
+        
         if "num_zones" not in config.options(config_sec):
             print "num_zones property missing from " + config_sec + " section"
             return
-
         self.num_zones = int(config.get(config_sec, "num_zones"))
+        
         self.zones = []
         
         for zone in range(self.num_zones):
@@ -82,13 +86,17 @@ class Security_Thread(Thread):
                     if state != self.zones[zone]['state']:
                         self.zones[zone]['state'] = state
                         self.zones[zone]['last']  = time.localtime()
+                        
+                        # If nobody is home and something has changed, trigger a warning
+                        if not self.og.user_thread.someone_is_present():
+                            print "SECURITY BREACH!"
+                            self.og.twilio.sendSMS("SECURITY BREACH!", self.breach_number)
         
                     # <tr class="success">
                     #     <td>Zone 1</td>
                     #     <td>Open</td>
                     #     <td>Yesterday</td>
                     # </tr>
-                    
                     entry = '\n<tr class="'
                     if state == CLOSED:
                         entry += 'success">\n'

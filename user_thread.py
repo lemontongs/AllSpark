@@ -53,7 +53,7 @@ class User_Thread(Thread):
         
         self.mutex = Lock()
         self.running = False
-        self.someone_is_home = True
+        self.users_present = True
         try:
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
@@ -107,7 +107,7 @@ class User_Thread(Thread):
                 if self.users[user]['is_home']:
                     self.file_handle.write(","+user)
                     someone_is_home = True
-            self.someone_is_home = someone_is_home
+            self.users_present = someone_is_home
             self.file_handle.write("\n")
             self.file_handle.flush()
             self.mutex.release()
@@ -118,12 +118,17 @@ class User_Thread(Thread):
         self.running = False
         self.file_handle.close()
     
-    def get_is_someone_home(self):
+    def is_someone_present_string(self):
         if not self.initialized:
-            return "UNKNOWNs"
-        if self.someone_is_home:
+            return "UNKNOWN"
+        if self.someone_is_present():
             return "YES"
         return "NO"
+    
+    def someone_is_present(self):
+        if not self.initialized:
+            return False
+        return self.users_present
     
     def is_user_home(self, user):
         
