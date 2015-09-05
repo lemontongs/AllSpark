@@ -2,6 +2,7 @@
 import os
 import time
 from threading import Thread, Lock
+import udp_interface
 
 OPEN   = '0'
 CLOSED = '1'
@@ -52,6 +53,12 @@ class Security_Thread(Thread):
         else:
             self.collect_period = float(config.get(config_sec, "collect_period", True))
         
+        # Setup UDP interface
+        self.udp = udp_interface.UDP_Interface( config )
+        
+        if not self.udp.isInitialized():
+            return
+        
         self.sensor_states = ""
         self.initialized = True
     
@@ -70,14 +77,25 @@ class Security_Thread(Thread):
             print "Warning: Security_Thread started before initialized, not running."
             return
         
+        self.udp.start()
+        
         self.running = True
         while self.running:
           
-            self.mutex.acquire()
-            self.sensor_states = ""
-            state_str = self.og.spark.getVariable( self.monitor_device_name, "state")
+            msg = self.udp.get( timeout = self.collect_period )
             
-            if state_str != None:
+            if msg != None:
+                
+                # ( ( ip_address, port ), message )
+                ( _, state_str ) = msg
+                
+                if len(state_str) != self.num_zones:
+                    print "Invalid message received", msg
+                    continue
+                
+                self.mutex.acquire()
+                self.sensor_states = ""
+                
                 for zone in range(self.num_zones):
                     
                     state = state_str[zone]
@@ -115,12 +133,11 @@ class Security_Thread(Thread):
                     
                     self.sensor_states += entry
                   
-                self.mutex.release()
-          
-            time.sleep(self.collect_period)
-  
+                self.mutex.release()        
+        
     def stop(self):
         self.running = False
+        self.udp.stop()
     
             
             

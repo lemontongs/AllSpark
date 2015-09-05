@@ -112,7 +112,9 @@ class User_Thread(Thread):
             self.file_handle.flush()
             self.mutex.release()
             
-            time.sleep(60)
+            for _ in range(60):
+                if self.running:
+                    time.sleep(1)
   
     def stop(self):
         self.running = False
@@ -194,7 +196,6 @@ class User_Thread(Thread):
             return "[] // None available"
         
         # Save the first state
-        previous = processed_data[0]
         start_times = {} 
         for user in self.users:
             if user in processed_data[0]:
