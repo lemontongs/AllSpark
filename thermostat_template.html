@@ -5,18 +5,19 @@
     Current string args:
         1: List of floor names          (string)
         2: Table of user data           (string)
-        3: Table of furnace data        (string)
-        4: Temperature data filename    (string)
-        5: Memory data filename         (string)
-        6: Average temperature          (float)
-        7: Top current temperature      (float)
-        8: Top current set point        (float)
-        9: Main current temperature     (float)
-       10: Main current set point       (float)
-       11: Basement current temperature (float)
-       12: Basement current set point   (float)
-       13: Is someone home?             (string)
-       13: Front door state             (string)
+        3: Table of security data       (string)
+        4: Table of furnace data        (string)
+        5: Temperature data filename    (string)
+        6: Memory data filename         (string)
+        7: Average temperature          (float)
+        8: Top current temperature      (float)
+        9: Top current set point        (float)
+       10: Main current temperature     (float)
+       11: Main current set point       (float)
+       12: Basement current temperature (float)
+       13: Basement current set point   (float)
+       14: Is someone home?             (string)
+       15: Front door state             (string)
     
     -->
   <head>
@@ -172,6 +173,23 @@
                 chart = new google.visualization.Timeline(document.getElementById('user_chart_div'));
                 chart.draw(dataTable);
             }
+                        
+            function drawSecurityData() {
+                var dataTable = new google.visualization.DataTable();
+
+                dataTable.addColumn({ type: 'string', id: 'Zone' });
+                dataTable.addColumn({ type: 'date', id: 'Start' });
+                dataTable.addColumn({ type: 'date', id: 'End' });
+
+                dataTable.addRows([
+                  
+                %s                                                                                  //   SECURITY DATA
+
+                ]);
+
+                chart = new google.visualization.Timeline(document.getElementById('security_chart_div'));
+                chart.draw(dataTable);
+            }
             
             function drawFurnaceData() {
                 var dataTable = new google.visualization.DataTable();
@@ -197,6 +215,7 @@
                 $.get("%s", function (data) { drawTempData(data); });                   //   TEMPERATURE DATA FILENAME
                 $.get("%s", function (data) { drawMemData(data);  });                   //   MEMORY DATA FILENAME
                 drawUserData();
+                drawSecurityData();
                 drawFurnaceData();
             });
             
@@ -370,6 +389,7 @@
                     %s                                                                     <!-- SECURITY STATE -->
                 </tbody>
             </table>
+            <div id="security_chart_div"></div>
           </div>
         </div>
       </div>

@@ -69,6 +69,7 @@ def build_html_file(filename, og):
     
     content = template_contents % (''.join([ (", '"+d+"'") for d in prettyDevNames ]), \
                                    og.user_thread.get_history(), \
+                                   og.security.get_history(), \
                                    og.furnace_ctrl.get_history(), \
                                    og.thermostat.filename, \
                                    og.mem.filename, \
