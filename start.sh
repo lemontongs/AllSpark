@@ -15,5 +15,5 @@ fi
 #done
 
 # Start
-python spark_thermostat_html_builder.py > logs/log 2>&1 &
+python -u spark_thermostat_html_builder.py > logs/log 2>&1 &
 

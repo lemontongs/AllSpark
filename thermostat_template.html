@@ -188,7 +188,7 @@
                 ]);
 
                 chart = new google.visualization.Timeline(document.getElementById('security_chart_div'));
-                chart.draw(dataTable);
+                chart.draw(dataTable, { height: 340 });
             }
             
             function drawFurnaceData() {
