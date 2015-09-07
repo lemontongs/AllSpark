@@ -187,7 +187,7 @@ class Set_Point():
                 </div>
             </div>
             
-            """ % ( zone.replace("_floor_temps",""), \
+            """ % ( zone.replace("_floor_temp",""), \
                     self.og.thermostat.get_current_device_temp( zone ), \
                     zone, \
                     self.get_set_point( zone ),

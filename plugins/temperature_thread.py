@@ -195,7 +195,7 @@ class Temperature_Thread(Thread):
           
             function drawTempData(data)
             {
-                var rows = data.split("\n");
+                var rows = data.split("\\n");
                 
                 var result = [['Time' %s ]]; // , 'first', 'second', 'basement'                     //   FLOOR NAMES
                 
