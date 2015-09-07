@@ -16,8 +16,9 @@
        11: Main current set point       (float)
        12: Basement current temperature (float)
        13: Basement current set point   (float)
-       14: Is someone home?             (string)
+       14: User HTML                    (string)
        15: Front door state             (string)
+       16: Memory HTML                  (string)
     
     -->
   <head>
@@ -38,8 +39,8 @@
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="jquery.bootstrap-touchspin.min.css" rel="stylesheet"/>
 
-    <!-- Custom styles for this template -->
-    <link href="navbar.css" rel="stylesheet">
+    <!-- Custom styles for this template
+    <link href="navbar.css" rel="stylesheet"> -->
     
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
     <script type="text/javascript">
@@ -47,6 +48,10 @@
             google.load("visualization", "1", {packages:["corechart","timeline"]});
             
             var ready_function_array = []
+            
+            
+            
+            
             
             function updateSetPoint(device)
             {
@@ -77,6 +82,10 @@
                     }
                 });
             }
+            
+            
+            
+            
             
             function drawTempData(data)
             {
@@ -138,62 +147,13 @@
             %s                                                                                      // MEMORY JAVASCRIPT
             
             
+            %s                                                                                      // USER JAVASCRIPT
             
             
+            %s                                                                                      // SECURITY JAVASCRIPT
             
             
-            function drawUserData() {
-                var dataTable = new google.visualization.DataTable();
-
-                dataTable.addColumn({ type: 'string', id: 'User' });
-                dataTable.addColumn({ type: 'date', id: 'Start' });
-                dataTable.addColumn({ type: 'date', id: 'End' });
-
-                dataTable.addRows([
-                  
-                %s                                                                                  //   USER IS HOME DATA
-
-                ]);
-
-                chart = new google.visualization.Timeline(document.getElementById('user_chart_div'));
-                chart.draw(dataTable);
-            }
-                        
-            function drawSecurityData() {
-                var dataTable = new google.visualization.DataTable();
-
-                dataTable.addColumn({ type: 'string', id: 'Zone' });
-                dataTable.addColumn({ type: 'date', id: 'Start' });
-                dataTable.addColumn({ type: 'date', id: 'End' });
-
-                dataTable.addRows([
-                  
-                %s                                                                                  //   SECURITY DATA
-
-                ]);
-
-                chart = new google.visualization.Timeline(document.getElementById('security_chart_div'));
-                chart.draw(dataTable, { height: 340 });
-            }
-            
-            function drawFurnaceData() {
-                var dataTable = new google.visualization.DataTable();
-
-                dataTable.addColumn({ type: 'string', id: 'Zone' });
-                dataTable.addColumn({ type: 'date', id: 'Start' });
-                dataTable.addColumn({ type: 'date', id: 'End' });
-
-                dataTable.addRows([
-                  
-                %s                                                                                   //   FURNACE IS ON DATA
-
-                ]);
-
-                chart = new google.visualization.Timeline(document.getElementById('furnace_chart_div'));
-                chart.draw(dataTable);
-            }
-            
-            
+            %s                                                                                      // FURNACE JAVASCRIPT
             
             
             $(document).ready(function ()
@@ -202,10 +162,6 @@
                 {
                 	ready_function_array[i]()
                 }
-                
-                drawUserData();
-                drawSecurityData();
-                drawFurnaceData();
             });
             
         </script>
@@ -242,22 +198,10 @@
       
       
       
+      %s                                                                                  <!-- THERMOSTAT HTML -->
       
-      <div id="plot" class="jumbotron">
-        <h2>Plot</h2>
-        <p class="lead">Current average temperature: %.1f F</p>                             <!-- CURR AVERAGE TEMP -->
-        <div class="row">
-          <div class="col-md-12">
-            <div id="temp_chart_div" style="height: 500px;"></div>
-          </div>
-        </div>
-        <div class="row">
-          <h2>Furnace State:</h2>
-          <div class="col-md-12">
-            <div id="furnace_chart_div"></div>
-          </div>
-        </div>
-      </div>
+      %s                                                                                  <!-- FURNACE HTML -->
+      
       
       
       <div id="thermostats" class="jumbotron">
@@ -352,52 +296,11 @@
       </div>
       
       
-      <div id="whosehome" class="jumbotron">
-        <div class="row">
-          <div class="col-md-12">
-            <h2>Someone is home: %s</h2>                                                   <!-- SOMEONE IS HOME -->
-            <div id="user_chart_div"></div>
-          </div>
-        </div>
-      </div>
+      %s                                                                                  <!-- USER HTML -->
       
+      %s                                                                                  <!-- SECURITY HTML -->
       
-      <div id="security" class="jumbotron">
-        <div class="row">
-          <div class="col-md-12">
-            <h2>Security:</h2>
-            <table class="table table-condensed">
-                <thead>
-                    <tr>
-                        <th>Zone</th>
-                        <th>State</th>
-                        <th>Last Change</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    %s                                                                     <!-- SECURITY STATE -->
-                </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-md-12">
-            <div id="security_chart_div"></div>
-          </div>
-        </div>
-      </div>
-      
-      
-      
-      <div id="sysinfo" class="jumbotron">
-        <div class="row">
-          <div class="col-md-12">
-            <h2>System Info</h2>
-            <h3>Memory Usage</h3>
-            <div id="mem_chart_div"></div>
-          </div>
-        </div>
-      </div>
+      %s                                                                                  <!-- MEMORY HTML -->
       
       <!-- Footer -->
       <div class="row">

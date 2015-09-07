@@ -71,11 +71,26 @@ class Memory_Thread(Thread):
         self.running = False
         self.file_handle.close()
     
+    def get_html(self):
+        html = """
+            <div id="sysinfo" class="jumbotron">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h2>System Info</h2>
+                        <h3>Memory Usage</h3>
+                        <div id="mem_chart_div"></div>
+                    </div>
+                </div>
+            </div>
+        """
+        
+        return html
+    
     def get_javascript(self):
         jscript = """
             function drawMemData(data)
             {
-                var rows = data.split('\n');
+                var rows = data.split('\\n');
                 
                 var result = [['Time','Memory Usage (percent)']];
                 

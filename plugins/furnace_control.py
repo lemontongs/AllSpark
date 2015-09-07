@@ -242,8 +242,7 @@ class Furnace_Control(Thread):
             self.mutex.acquire()
             self.furnace_state_file.write(str(time.time()))
             
-            f.write("###########################\n")
-            f.write("# Zone # Temp # Set Point #\n")
+            f.write("#\n")
             
             for zone in self.zones:
                 
@@ -263,7 +262,7 @@ class Furnace_Control(Thread):
                     s = "cooling"
                     self.off(pin)
                 
-                f.write(zone+" "+str(temp)+" "+str(set_p)+" "+s+"\n")
+                f.write("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s+"\n")
                 
             f.flush()
             
@@ -273,9 +272,51 @@ class Furnace_Control(Thread):
             time.sleep(60)
         f.close()
     
+    def get_html(self):
+        html = """
+        
+        <div id="furnace" class="jumbotron">
+            <div class="row">
+                <h2>Furnace State:</h2>
+                <div class="col-md-12">
+                    <div id="furnace_chart_div"></div>
+                </div>
+            </div>
+        </div>
+        
+        """
+        
+        return html
+    
+    def get_javascript(self):
+        jscript = """
+            function drawFurnaceData()
+            {
+                var dataTable = new google.visualization.DataTable();
+
+                dataTable.addColumn({ type: 'string', id: 'Zone' });
+                dataTable.addColumn({ type: 'date', id: 'Start' });
+                dataTable.addColumn({ type: 'date', id: 'End' });
+
+                dataTable.addRows([
+                  
+                %s             //   FURNACE IS ON DATA
+
+                ]);
+
+                chart = new google.visualization.Timeline(document.getElementById('furnace_chart_div'));
+                chart.draw(dataTable);
+            }
+            ready_function_array.push( drawFurnaceData )
+            
+        """ % self.get_history()
+        
+        return jscript
+    
     def get_history(self, days=1, seconds=0):
         search_items = self.zones.keys()
         return file_utilities.convert_file_to_timeline_string(self.furnace_state_filename, self.mutex, search_items, days=days, seconds=seconds)
+
 #
 # MAIN
 #

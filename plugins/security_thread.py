@@ -91,8 +91,60 @@ class Security_Thread(Thread):
         self.running = False
         self.udp.stop()
     
-    def get_history(self):
-        return self.data_logger.get_google_chart_string()
+    def get_html(self):
+        html = """
+            <div id="security" class="jumbotron">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h2>Security:</h2>
+                        <table class="table table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>Zone</th>
+                                    <th>State</th>
+                                    <th>Last Change</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                %s               <!-- SECURITY STATE -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div id="security_chart_div"></div>
+                    </div>
+                </div>
+            </div>
+        """ % self.getSensorStates()
+        
+        return html
+    
+    def get_javascript(self):
+        jscript = """
+        
+            function drawSecurityData() {
+                var dataTable = new google.visualization.DataTable();
+
+                dataTable.addColumn({ type: 'string', id: 'Zone' });
+                dataTable.addColumn({ type: 'date', id: 'Start' });
+                dataTable.addColumn({ type: 'date', id: 'End' });
+
+                dataTable.addRows([
+                  
+                %s                             //   SECURITY DATA
+
+                ]);
+
+                chart = new google.visualization.Timeline(document.getElementById('security_chart_div'));
+                chart.draw(dataTable, { height: 340 });
+            }
+            ready_function_array.push( drawSecurityData )
+            
+        """ % self.data_logger.get_google_chart_string()
+        
+        return jscript
     
     def run(self):
         

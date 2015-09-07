@@ -141,6 +141,44 @@ class User_Thread(Thread):
         print "Warning: unknown user: "+user
         return False
     
+    def get_html(self):
+        html = """
+            <div id="whosehome" class="jumbotron">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h2>Someone is home: %s</h2>     <!-- SOMEONE IS HOME -->
+                        <div id="user_chart_div"></div>
+                    </div>
+                </div>
+            </div>
+        """ % self.is_someone_present_string()
+        
+        return html
+    
+    def get_javascript(self):
+        jscript = """
+            function drawUserData() {
+                var dataTable = new google.visualization.DataTable();
+
+                dataTable.addColumn({ type: 'string', id: 'User' });
+                dataTable.addColumn({ type: 'date', id: 'Start' });
+                dataTable.addColumn({ type: 'date', id: 'End' });
+
+                dataTable.addRows([
+                  
+                %s
+
+                ]);
+
+                chart = new google.visualization.Timeline(document.getElementById('user_chart_div'));
+                chart.draw(dataTable);
+            }
+            ready_function_array.push( drawUserData )
+            
+            """ % self.get_history()
+        
+        return jscript
+        
     def get_history(self, days=1, seconds=0):
         
         # start_time is "now" minus days and seconds

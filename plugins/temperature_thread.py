@@ -173,6 +173,29 @@ class Temperature_Thread(Thread):
         print "WARNING:",device,"not found" 
         return -1000.0
     
+    def get_html(self):
+        html = """
+        
+        <div id="plot" class="jumbotron">
+            <h2>Plot</h2>
+            <p class="lead">Current average temperature: %.1f F</p>          <!-- CURR AVERAGE TEMP -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div id="temp_chart_div" style="height: 500px;"></div>
+                </div>
+            </div>
+        </div>
+
+        """ % self.get_average_temp()
+        
+        return html
+    
+    def get_javascript(self):
+        jscript = """
+        """
+        
+        return jscript
+    
 #    def get_history(self, days=1, seconds=0):
 #        
 #        # start_time is "now" minus days and seconds

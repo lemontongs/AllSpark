@@ -70,18 +70,23 @@ def build_html_file(filename, og):
     content = template_contents % (''.join([ (", '"+d+"'") for d in prettyDevNames ]), \
                                    og.thermostat.filename, \
                                    og.mem.get_javascript(), \
-                                   og.user_thread.get_history(), \
-                                   og.security.get_history(), \
-                                   og.furnace_ctrl.get_history(), \
-                                   og.thermostat.get_average_temp(), \
+                                   og.user_thread.get_javascript(), \
+                                   og.security.get_javascript(), \
+                                   og.furnace_ctrl.get_javascript(), \
+                                   
+                                   og.thermostat.get_html(), \
+                                   og.furnace_ctrl.get_html(), \
+                                   
                                    og.thermostat.get_current_device_temp(devices[2]), \
                                    og.furnace_ctrl.get_set_point(devices[2]), \
                                    og.thermostat.get_current_device_temp(devices[0]), \
                                    og.furnace_ctrl.get_set_point(devices[0]), \
                                    og.thermostat.get_current_device_temp(devices[1]), \
                                    og.furnace_ctrl.get_set_point(devices[1]), \
-                                   og.user_thread.is_someone_present_string(), \
-                                   og.security.getSensorStates())
+                                   
+                                   og.user_thread.get_html(), \
+                                   og.security.get_html(), \
+                                   og.mem.get_html())
     
     if DEBUG:
         print "writing file"
