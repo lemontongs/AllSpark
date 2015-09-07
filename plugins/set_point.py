@@ -69,18 +69,6 @@ class Set_Point():
             self.zones[device] = {'set_point':t}
             self.set_point_config.set(self.set_point_section, device, t)
             
-            p = None
-            try:
-                p = self.set_point_config.get(self.ctrl_pins_section, device, True)
-                if "None" in p:
-                    print "WARNING: pin for '" + device + "' not set"
-                    p = None
-                    
-                p = int(p)
-            except:
-                print "WARNING: pin for '" + device + "' invalid"
-            
-            self.zones[device]['pin'] = p
         
         # Write the file, with the corrections (if any)
         self.save_zones_to_file()
