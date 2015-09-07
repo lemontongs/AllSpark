@@ -5,8 +5,8 @@ import user_thread
 import memory_thread
 import furnace_control
 import security_thread
-import spark_interface
-import twilio_interface
+from utilities import spark_interface
+from utilities import twilio_interface
 
 class Object_Group():
     def __init__(self, config):

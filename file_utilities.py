@@ -57,7 +57,6 @@ def convert_file_to_timeline_string(data_filename, mutex, search_items, days=1, 
         return "[] // None available"
     
     # Save the first state
-    previous = processed_data[0]
     start_times = {} 
     for item in search_items:
         if item in processed_data[0]:

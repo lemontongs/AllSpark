@@ -1,6 +1,5 @@
 import csv
 import os
-import subprocess
 import sys
 import time
 import datetime
@@ -61,16 +60,22 @@ class Memory_Thread(Thread):
         self.running = True
         while self.running:
           
-          self.mutex.acquire()
-          self.file_handle.write(str(time.time()) + "," + str(psutil.phymem_usage().percent) + "\n")
-          self.file_handle.flush()
-          self.mutex.release()
+            self.mutex.acquire()
+            self.file_handle.write(str(time.time()) + "," + str(psutil.phymem_usage().percent) + "\n")
+            self.file_handle.flush()
+            self.mutex.release()
           
-          time.sleep(self.collect_period)
+            time.sleep(self.collect_period)
   
     def stop(self):
         self.running = False
         self.file_handle.close()
+    
+    def get_html(self):
+        pass
+    
+    def get_javascript(self):
+        pass
     
     def get_history(self, days=1, seconds=0):
         
@@ -92,7 +97,7 @@ class Memory_Thread(Thread):
         
         # Build the return string
         return_string = ""
-        for i, row in enumerate(memdata):
+        for _, row in enumerate(memdata):
             
             # Skip the ones before the start_time
             dt = datetime.datetime.fromtimestamp(float(row[0]))

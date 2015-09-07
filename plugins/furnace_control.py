@@ -6,6 +6,7 @@ import time
 from threading import Thread, Lock
 import os
 import imp
+import file_utilities
 
 try:
     imp.find_module('RPi')
@@ -14,10 +15,9 @@ try:
     USING_RPI_GPIO = True
 except ImportError:
     USING_RPI_GPIO = False
-    import GPIO
+    from utilities import GPIO
     print "Warning: using local GPIO module"
 
-import utilities
 
 
 class Furnace_Control(Thread):
@@ -275,7 +275,7 @@ class Furnace_Control(Thread):
     
     def get_history(self, days=1, seconds=0):
         search_items = self.zones.keys()
-        return utilities.convert_file_to_timeline_string(self.furnace_state_filename, self.mutex, search_items, days=days, seconds=seconds)
+        return file_utilities.convert_file_to_timeline_string(self.furnace_state_filename, self.mutex, search_items, days=days, seconds=seconds)
 #
 # MAIN
 #

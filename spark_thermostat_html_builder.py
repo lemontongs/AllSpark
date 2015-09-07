@@ -6,7 +6,7 @@ import sys
 import signal
 import time
 
-import object_group
+from plugins import object_group
 
 DEBUG = False
 

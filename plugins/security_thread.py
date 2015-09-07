@@ -2,8 +2,8 @@
 import os
 import time
 from threading import Thread, Lock
-import udp_interface
-import logger
+from utilities import udp_interface
+from utilities import logger
 
 OPEN   = '0'
 CLOSED = '1'
