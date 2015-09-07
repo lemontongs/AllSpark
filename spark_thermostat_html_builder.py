@@ -68,11 +68,11 @@ def build_html_file(filename, og):
     prettyDevNames = og.thermostat.getPrettyDeviceNames()
     
     content = template_contents % (''.join([ (", '"+d+"'") for d in prettyDevNames ]), \
+                                   og.thermostat.filename, \
+                                   og.mem.get_javascript(), \
                                    og.user_thread.get_history(), \
                                    og.security.get_history(), \
                                    og.furnace_ctrl.get_history(), \
-                                   og.thermostat.filename, \
-                                   og.mem.filename, \
                                    og.thermostat.get_average_temp(), \
                                    og.thermostat.get_current_device_temp(devices[2]), \
                                    og.furnace_ctrl.get_set_point(devices[2]), \

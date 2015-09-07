@@ -71,11 +71,53 @@ class Memory_Thread(Thread):
         self.running = False
         self.file_handle.close()
     
-    def get_html(self):
-        pass
-    
     def get_javascript(self):
-        pass
+        jscript = """
+            function drawMemData(data)
+            {
+                var rows = data.split('\n');
+                
+                var result = [['Time','Memory Usage (percent)']];
+                
+                for ( var i = 0; i < rows.length; i++)
+                {
+                    var row = rows[i];
+                    var items = row.split(",");
+                    if (items.length != 2)
+                        continue;
+                    var time = items[0];
+                    var mem_usage = items[1];
+                    
+                    var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+                    d.setUTCSeconds(parseInt(time));
+                    
+                    var now = new Date();
+                    var days = (now - d)/(1000*60*60*24);
+                    if (days > 1.0)
+                    {
+                        continue;
+                    }
+                    
+                    result.push([d, parseFloat(mem_usage)]);
+                }
+                
+                var data = google.visualization.arrayToDataTable(result);
+                var options = { title: 'Memory Usage' };
+                var chart = new google.visualization.LineChart(document.getElementById('mem_chart_div'));
+                chart.draw(data, options);
+            }
+            
+            function drawMemDataOnReady()
+            {
+                $.get("%s", function (data) { drawMemData(data);  })
+            }
+            
+            ready_function_array.push( drawMemDataOnReady )
+            
+            """ % self.filename
+        
+        return jscript
+        
     
     def get_history(self, days=1, seconds=0):
         
