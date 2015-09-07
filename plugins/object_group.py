@@ -5,8 +5,10 @@ import user_thread
 import memory_thread
 import furnace_control
 import security_thread
+import set_point
 from utilities import spark_interface
 from utilities import twilio_interface
+
 
 class Object_Group():
     def __init__(self, config):
@@ -62,13 +64,20 @@ class Object_Group():
         ############################################################################
         # Furnace Control Thread
         ############################################################################
-        self.furnace_ctrl = furnace_control.Furnace_Control \
-            (self, "data/set_points.cfg", "data/furnace_state.csv")
+        self.furnace_ctrl = furnace_control.Furnace_Control(self, config = config)
 
         if not self.furnace_ctrl.isInitialized():
             print "Error creating furnace controller"
             return
 
+        ############################################################################
+        # Furnace Set Point Object
+        ############################################################################
+        self.set_point = set_point.Set_Point(self, config = config)
+
+        if not self.set_point.isInitialized():
+            print "Error creating set point object"
+            return
 
         ############################################################################
         # Comms Thread
@@ -79,7 +88,7 @@ class Object_Group():
             print "Error creating comms thread"
             return
 
-        self.comms.register_callback("set_point", self.furnace_ctrl.parse_set_point_message)
+        self.comms.register_callback("set_point", self.set_point.parse_set_point_message)
         
         ############################################################################
         # Security Thread

@@ -192,7 +192,61 @@ class Temperature_Thread(Thread):
     
     def get_javascript(self):
         jscript = """
-        """
+          
+            function drawTempData(data)
+            {
+                var rows = data.split("\n");
+                
+                var result = [['Time' %s ]]; // , 'first', 'second', 'basement'                     //   FLOOR NAMES
+                
+                for ( var i = 0; i < rows.length; i++)
+                {
+                    var row = rows[i];
+                    var items = row.split(",");
+                    if (items.length != 4)
+                        continue;
+                    
+                    var time = items[0];
+                    
+                    var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+                    d.setUTCSeconds(parseInt(time));
+                    
+                    var now = new Date();
+                    var days = (now - d)/(1000*60*60*24);
+                    if (days > 0.5)
+                    {
+                        continue;
+                    }
+                    
+                    var temps = [];
+                    temps.push(d);
+                    for (var t = 1; t < items.length; t++ )
+                    {
+                        temps[t] = parseFloat(items[t]);
+                        if (temps[t] == NaN)
+                        {
+                            temps[t] = null;
+                        }
+                    }
+                    
+                    result.push(temps);
+                }
+                
+                var data = google.visualization.arrayToDataTable(result);
+                var options = { title: 'Zone Temperatures (F)' };//,
+                             //   hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
+
+                var chart = new google.visualization.LineChart(document.getElementById('temp_chart_div'));
+                chart.draw(data, options);
+            }
+            
+            function drawTempDataOnReady()
+            {
+                $.get("%s", function (data) { drawTempData(data);  })           //   TEMPERATURE DATA FILENAME
+            }
+            ready_function_array.push( drawTempDataOnReady )
+        
+        """ % ( ''.join([ (", '"+d+"'") for d in self.getPrettyDeviceNames() ]), self.filename )
         
         return jscript
     
