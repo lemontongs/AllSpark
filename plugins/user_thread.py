@@ -16,13 +16,15 @@ from threading import Thread, Lock
 #    t1.start()
 #
 
+CONFIG_SEC_NAME = "user_thread"
+
 class User_Thread(Thread):
     def __init__(self, object_group, config):
         Thread.__init__(self)
         self.og = object_group
         self.initialized = False
         
-        config_sec = "user_thread"
+        config_sec = CONFIG_SEC_NAME
         
         if config_sec not in config.sections():
             print config_sec + " section missing from config file"
@@ -62,7 +64,20 @@ class User_Thread(Thread):
             return
         
         self.initialized = True
-        
+    
+    @staticmethod
+    def get_template_config(config):
+        config.add_section(CONFIG_SEC_NAME)
+        config.set(CONFIG_SEC_NAME,"data_directory", "data")
+        config.set(CONFIG_SEC_NAME, "data_file", "%(data_directory)s/user_state.csv")
+        config.set(CONFIG_SEC_NAME, "users", "user_1,user_2,user_3")
+        config.add_section("user_1")
+        config.set("user_1","mac", "xx:xx:xx:xx:xx:xx")
+        config.add_section("user_2")
+        config.set("user_2","mac", "xx:xx:xx:xx:xx:xx")
+        config.add_section("user_3")
+        config.set("user_3","mac", "xx:xx:xx:xx:xx:xx")
+
     def isInitialized(self):
         return self.initialized
     

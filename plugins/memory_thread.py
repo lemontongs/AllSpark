@@ -15,6 +15,8 @@ from threading import Thread, Lock
 #    t1.start()
 #
 
+CONFIG_SEC_NAME = "memory_thread"
+
 class Memory_Thread(Thread):
     def __init__(self, object_group, config):
         Thread.__init__(self)
@@ -22,7 +24,7 @@ class Memory_Thread(Thread):
         self.initialized = False
         self.mutex = Lock()
         self.running = False
-        config_sec = "memory_thread"
+        config_sec = CONFIG_SEC_NAME
 
         if config_sec not in config.sections():
             print config_sec + " section missing from config file"
@@ -48,6 +50,12 @@ class Memory_Thread(Thread):
         
         self.initialized = True
     
+    @staticmethod
+    def get_template_config(config):
+        config.add_section(CONFIG_SEC_NAME)
+        config.set(CONFIG_SEC_NAME,"data_directory", "data")
+        config.set(CONFIG_SEC_NAME, "data_file", "%(data_directory)s/mem_usage.csv")
+        
     def isInitialized(self):
         return self.initialized
     

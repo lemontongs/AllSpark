@@ -4,13 +4,15 @@ import os
 from threading import Lock
 
 
+CONFIG_SEC_NAME = "set_point"
+
+
 class Set_Point():
     def __init__(self, object_group, config):
         self.og = object_group
         self.initialized = False
         self.set_point_lock = Lock()
-        
-        config_sec = "set_point"
+        config_sec = CONFIG_SEC_NAME
 
         if config_sec not in config.sections():
             print config_sec + " section missing from config file"
@@ -31,6 +33,12 @@ class Set_Point():
         
         self.initialized = True
     
+    @staticmethod
+    def get_template_config(config):
+        config.add_section(CONFIG_SEC_NAME)
+        config.set(CONFIG_SEC_NAME,"data_directory", "data")
+        config.set(CONFIG_SEC_NAME,"set_point_file", "%(data_directory)s/set_points.cfg")
+        
     def load_set_point_file(self):
         
         # If the file does not exist, create it
@@ -157,6 +165,9 @@ class Set_Point():
         
         for zone in self.zones:
             
+            zone_name       = zone.replace("_floor_temp","")
+            zone_name_upper = zone_name[0].upper() + zone_name[1:]
+            
             html += """
             
             <div class="row">
@@ -187,7 +198,7 @@ class Set_Point():
                 </div>
             </div>
             
-            """ % ( zone.replace("_floor_temp",""), \
+            """ % ( zone_name_upper, \
                     self.og.thermostat.get_current_device_temp( zone ), \
                     zone, \
                     self.get_set_point( zone ),

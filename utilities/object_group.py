@@ -1,13 +1,14 @@
 
+from plugins import temperature_thread
+from plugins import user_thread
+from plugins import memory_thread
+from plugins import furnace_control
+from plugins import security_thread
+from plugins import set_point
 import comms_thread
-import temperature_thread
-import user_thread
-import memory_thread
-import furnace_control
-import security_thread
-import set_point
-from utilities import spark_interface
-from utilities import twilio_interface
+import spark_interface
+import twilio_interface
+import message_broadcast
 
 
 class Object_Group():
@@ -82,7 +83,7 @@ class Object_Group():
         ############################################################################
         # Comms Thread
         ############################################################################
-        self.comms = comms_thread.Comms_Thread(self)
+        self.comms = comms_thread.Comms_Thread(port = 5555)
 
         if not self.comms.isInitialized():
             print "Error creating comms thread"
@@ -109,6 +110,12 @@ class Object_Group():
             return
         
         
+        ############################################################################
+        # UDP Multicast
+        ############################################################################
+        self.broadcast = message_broadcast.Message_Broadcast()
+
+        
         self.initialized = True
         
         
@@ -133,4 +140,30 @@ class Object_Group():
             self.security.stop()
             self.running = False
 
+    def get_javascript(self):
+        return self.thermostat.get_javascript()   + \
+               self.mem.get_javascript()          + \
+               self.user_thread.get_javascript()  + \
+               self.security.get_javascript()     + \
+               self.furnace_ctrl.get_javascript() + \
+               self.set_point.get_javascript()
+        
+    def get_html(self):
+        return self.thermostat.get_html()   + \
+               self.furnace_ctrl.get_html() + \
+               self.set_point.get_html()    + \
+               self.user_thread.get_html()  + \
+               self.security.get_html()     + \
+               self.mem.get_html()
+        
+    @staticmethod
+    def get_template_config(config):
+        temperature_thread.Temperature_Thread.get_template_config(config)
+        furnace_control.Furnace_Control.get_template_config(config)
+        set_point.Set_Point.get_template_config(config)
+        security_thread.Security_Thread.get_template_config(config)
+        user_thread.User_Thread.get_template_config(config)
+        memory_thread.Memory_Thread.get_template_config(config)
+        
+        
         

@@ -7,16 +7,16 @@ import os
 import zmq
 
 class Comms_Thread(Thread):
-    def __init__(self, object_group):
+    def __init__(self, port):
         Thread.__init__(self)
-        self.og = object_group
         self.initialized = False
         self.run_lock = Lock()
+        self.port = port
         
         try:
             self.context = zmq.Context()
             self.socket = self.context.socket(zmq.PAIR)
-            self.socket.bind("tcp://*:5555")
+            self.socket.bind("tcp://*:" + str(self.port))
         except:
             print "Failed to start comms thread:", sys.exc_info()
             return
@@ -34,7 +34,7 @@ class Comms_Thread(Thread):
             # Send a quit message to close the thread
             context = zmq.Context()
             sock = context.socket(zmq.PAIR)
-            sock.connect("tcp://localhost:5555")
+            sock.connect("tcp://localhost:" + str(self.port))
             sock.send("quit")
              
             self.initialized = False
@@ -58,26 +58,26 @@ class Comms_Thread(Thread):
         self.running = self.run_lock.acquire()
         while self.running:
             
-             msg = self.socket.recv()
-             f.write(str(time.time())+" GOT: "+str(msg)+"\n")
-             f.flush()
+            msg = self.socket.recv()
+            f.write(str(time.time())+" GOT: "+str(msg)+"\n")
+            f.flush()
+            
+            if msg == "quit":
+                break
+            
+            # message format:  topic,something,something ...
+            topic = msg.split(',')[0]
+            if topic not in self.callbacks:
+                f.write('nobody is registered for topic: "' + topic + '"\n')
+                f.flush()
+                continue
              
-             if msg == "quit":
-                 break
-             
-             # message format:  topic,something,something ...
-             topic = msg.split(',')[0]
-             if topic not in self.callbacks:
-                 f.write('nobody is registered for topic: "' + topic + '"\n')
-                 f.flush()
-                 continue
-             
-             # call each registered callback
-             functions = self.callbacks[topic]
-             for func in functions:
-                 f.write("calling: "+func.__name__+"\n")
-                 f.flush()
-                 func(msg)
+            # call each registered callback
+            functions = self.callbacks[topic]
+            for func in functions:
+                f.write("calling: "+func.__name__+"\n")
+                f.flush()
+                func(msg)
              
         f.close()
         self.run_lock.release()

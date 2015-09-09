@@ -8,6 +8,8 @@ from utilities import logger
 OPEN   = '0'
 CLOSED = '1'
 
+CONFIG_SEC_NAME = "security_thread"
+
 class Security_Thread(Thread):
     def __init__(self, object_group, config):
         Thread.__init__(self)
@@ -15,7 +17,7 @@ class Security_Thread(Thread):
         self.initialized = False
         self.mutex = Lock()
         self.running = False
-        config_sec = "security_thread"
+        config_sec = CONFIG_SEC_NAME
 
         if config_sec not in config.sections():
             print config_sec + " section missing from config file"
@@ -78,6 +80,22 @@ class Security_Thread(Thread):
         self.sensor_states = ""
         self.initialized = True
     
+    @staticmethod
+    def get_template_config(config):
+        config.add_section(CONFIG_SEC_NAME)
+        config.set(CONFIG_SEC_NAME,"temp_data_dir", "data")
+        config.set(CONFIG_SEC_NAME,"data_directory", "%(temp_data_dir)s/security_data")
+        config.set(CONFIG_SEC_NAME,"data_file", "%(data_directory)s/today.csv")
+        config.set(CONFIG_SEC_NAME,"breach_number", "+15551231234")
+        config.set(CONFIG_SEC_NAME,"monitor_device_name", "<particle security device name>")
+        config.set(CONFIG_SEC_NAME,"num_zones", "5")
+        config.set(CONFIG_SEC_NAME,"zone_0", "<zone 0 name>")
+        config.set(CONFIG_SEC_NAME,"zone_1", "<zone 1 name>")
+        config.set(CONFIG_SEC_NAME,"zone_2", "<zone 2 name>")
+        config.set(CONFIG_SEC_NAME,"zone_3", "<zone 3 name>")
+        config.set(CONFIG_SEC_NAME,"zone_4", "<zone 4 name>")
+        
+        
     def isInitialized(self):
         return self.initialized
     

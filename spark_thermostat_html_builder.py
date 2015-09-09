@@ -6,7 +6,7 @@ import sys
 import signal
 import time
 
-from plugins import object_group
+from utilities import object_group
 
 DEBUG = False
 
@@ -21,36 +21,11 @@ config_filename = "data/config.cfg"
 def write_template_config():
     c = ConfigParser.ConfigParser()
     
-    sec = "general"
-    c.add_section(sec)
-    c.set(sec,"data_directory","data")
-    c.set(sec, "html_filename", "%(data_directory)s/index.html")
+    #todo: missing general twilio and udp sections 
     
-    sec = "temperature_thread"
-    c.add_section(sec)
-    c.set(sec,"data_directory","data")
-    c.set(sec, "data_file", "%(data_directory)s/floor_temps.csv")
-    c.set(sec, "spark_auth_file", "%(data_directory)s/spark_auth.txt")
-    
-    sec = "furnace_control"
-    c.add_section(sec)
-    c.set(sec,"data_directory","data")
-    c.set(sec, "set_point_filename", "%(data_directory)s/set_points.cfg")
-    
-    sec = "memory_thread"
-    c.add_section(sec)
-    c.set(sec,"data_directory","data")
-    c.set(sec, "data_file", "%(data_directory)s/mem_usage.csv")
-    
-    sec = "user_thread"
-    c.add_section(sec)
-    c.set(sec, "users", "user_1,user_2,user_3")
-    
-    for user in ["user_1", "user_2", "user_3"]:
-        c.add_section(user)
-        c.set(user, "mac", "xx:xx:xx:xx:xx:xx:xx")
-
-    c.write(open("temp.cfg","wb"))
+    object_group.Object_Group.get_template_config( c )
+    c.write(open("example.cfg","wb"))
+    print "Created ./example.cfg"
 
 
 def build_html_file(filename, og):
@@ -64,19 +39,7 @@ def build_html_file(filename, og):
         template_contents = f.read()
         f.close()
     
-    content = template_contents % (og.thermostat.get_javascript(), \
-                                   og.mem.get_javascript(), \
-                                   og.user_thread.get_javascript(), \
-                                   og.security.get_javascript(), \
-                                   og.furnace_ctrl.get_javascript(), \
-                                   og.set_point.get_javascript(), \
-                                   
-                                   og.thermostat.get_html(), \
-                                   og.furnace_ctrl.get_html(), \
-                                   og.set_point.get_html(), \
-                                   og.user_thread.get_html(), \
-                                   og.security.get_html(), \
-                                   og.mem.get_html())
+    content = template_contents % ( og.get_javascript(), og.get_html() )
     
     if DEBUG:
         print "writing file"
@@ -141,7 +104,7 @@ if not os.path.exists(data_dir):
     os.makedirs(data_dir)
 
 ############################################################################
-# Instantiate and initialize threads
+# Instantiate and initialize the plugins
 ############################################################################
 og = object_group.Object_Group(config)
 

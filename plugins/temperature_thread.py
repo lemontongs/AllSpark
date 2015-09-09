@@ -14,6 +14,8 @@ from threading import Thread, Lock
 #    t1.start()
 #
 
+CONFIG_SEC_NAME = "temperature_thread"
+
 class Temperature_Thread(Thread):
     def __init__(self, object_group, config):
         Thread.__init__(self)
@@ -50,6 +52,13 @@ class Temperature_Thread(Thread):
             os.makedirs(self.temp_data_directory)
         
         self.initialized = True
+    
+    @staticmethod
+    def get_template_config(config):
+        config.add_section(CONFIG_SEC_NAME)
+        config.set(CONFIG_SEC_NAME,"data_directory", "data")
+        config.set(CONFIG_SEC_NAME,"temp_data_dir", "%(data_directory)s/temperature_data")
+        config.set(CONFIG_SEC_NAME, "data_file", "%(temp_data_dir)s/today.csv")
     
     def isInitialized(self):
         return self.initialized

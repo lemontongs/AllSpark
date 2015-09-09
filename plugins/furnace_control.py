@@ -18,6 +18,8 @@ except ImportError:
     print "Warning: using local GPIO module"
 
 
+CONFIG_SEC_NAME = "furnace_control"
+
 class Furnace_Control(Thread):
     def __init__(self, object_group, config):
         Thread.__init__(self)
@@ -29,9 +31,8 @@ class Furnace_Control(Thread):
             print "ERROR: Running in non-privaleged mode, Furnace_Control not running" 
             return
         
-        
         # Get parameters from the config file
-        config_sec = "furnace_control"
+        config_sec = CONFIG_SEC_NAME
 
         if config_sec not in config.sections():
             print config_sec + " section missing from config file"
@@ -76,6 +77,16 @@ class Furnace_Control(Thread):
         self.running = False
         self.initialized = True
 
+    @staticmethod
+    def get_template_config(config):
+        config.add_section(CONFIG_SEC_NAME)
+        config.set(CONFIG_SEC_NAME,"temp_data_dir", "data")
+        config.set(CONFIG_SEC_NAME,"data_directory", "%(temp_data_dir)s/furnace_data")
+        config.set(CONFIG_SEC_NAME, "data_file", "%(data_directory)s/today.csv")
+        config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_1>", "<pin for zone 1>")
+        config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_2>", "<pin for zone 2>")
+        config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_3>", "<pin for zone 3>")
+        
     def isInitialized(self):
         return self.initialized
     
