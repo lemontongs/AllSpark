@@ -188,15 +188,15 @@ class Security_Thread(Thread):
                 
                 self.mutex.acquire()
                 self.sensor_states = ""
-                zones_that_are_closed = []
+                zones_that_are_open = []
                 
                 for zone in range(self.num_zones):
                     
                     state = state_str[zone]
                     
                     # Save the closed zones for logging
-                    if state == CLOSED:
-                        zones_that_are_closed.append( self.zones[zone]['name'] )
+                    if state == OPEN:
+                        zones_that_are_open.append( self.zones[zone]['name'] )
                     
                     # record state changes
                     if state != self.zones[zone]['state']:
@@ -231,7 +231,7 @@ class Security_Thread(Thread):
                     
                     self.sensor_states += entry
                 
-                self.data_logger.add_data( zones_that_are_closed )
+                self.data_logger.add_data( zones_that_are_open )
                 
                 self.mutex.release()        
         
