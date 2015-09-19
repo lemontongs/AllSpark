@@ -104,13 +104,20 @@ class User_Thread(Thread):
             result = subprocess.Popen(["arp-scan","-l"], stdout=subprocess.PIPE).stdout.read()
             now = time.time()
             for user in self.users.keys():
-                is_home = self.users[user]['mac'] in result
+                was_home = self.users[user]['is_home']
+                is_home  = self.users[user]['mac'] in result
                 if is_home:
                     self.users[user]['last_seen'] = now
                 if (now - self.users[user]['last_seen']) < 600:
                     self.users[user]['is_home'] = True
                 else:
                     self.users[user]['is_home'] = False
+                
+                # Fire off a message when a user arrives home
+                if not was_home and self.users[user]['is_home']:
+                    self.og.broadcast.send( user+" has arrived at home" )
+            
+            
             
             #
             # Write the collected data to file
@@ -127,7 +134,7 @@ class User_Thread(Thread):
             self.file_handle.flush()
             self.mutex.release()
             
-            for _ in range(60):
+            for _ in range(30):
                 if self.running:
                     time.sleep(1)
   
