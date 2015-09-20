@@ -5,8 +5,10 @@ import os
 import sys
 import signal
 import time
+import threading
 
 from utilities import object_group
+
 
 DEBUG = False
 
@@ -133,6 +135,9 @@ while True:
     #os.system("/home/mlamonta/bin/blink1-tool -q --hsb=130,200,50")
     time.sleep(60)
     #os.system("/home/mlamonta/bin/blink1-tool -q --off")
+    
+    for t in threading.enumerate():
+        print t
         
 
 
