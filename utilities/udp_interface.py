@@ -8,12 +8,14 @@ import Queue
 # port = 5100
 # interface = "0.0.0.0"
 
+CONFIG_SEC_NAME = "udp"
+
 class UDP_Interface(Thread):
     def __init__(self, config):
-        Thread.__init__(self)
+        Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.initialized = False
 
-        config_sec = "udp"
+        config_sec = CONFIG_SEC_NAME
         
         if config_sec not in config.sections():
             print config_sec + " section missing from config file"

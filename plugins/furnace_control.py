@@ -22,7 +22,7 @@ CONFIG_SEC_NAME = "furnace_control"
 
 class Furnace_Control(Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self)
+        Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.og = object_group
         self.initialized = False
         

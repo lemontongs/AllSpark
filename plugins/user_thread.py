@@ -20,7 +20,7 @@ CONFIG_SEC_NAME = "user_thread"
 
 class User_Thread(Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self)
+        Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.og = object_group
         self.initialized = False
         
@@ -116,8 +116,6 @@ class User_Thread(Thread):
                 # Fire off a message when a user arrives home
                 if not was_home and self.users[user]['is_home']:
                     self.og.broadcast.send( user+" has arrived at home" )
-            
-            
             
             #
             # Write the collected data to file
