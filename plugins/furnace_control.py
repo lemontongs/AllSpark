@@ -5,7 +5,13 @@ import time
 from threading import Thread
 import os
 import imp
-from utilities import logger
+import logging
+from utilities import data_logger
+from utilities import config_utils
+
+CONFIG_SEC_NAME = "furnace_control"
+
+logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
 try:
     imp.find_module('RPi')
@@ -15,10 +21,8 @@ try:
 except ImportError:
     USING_RPI_GPIO = False
     from utilities import GPIO
-    print "Warning: using local GPIO module"
+    logger.info("Using local GPIO module")
 
-
-CONFIG_SEC_NAME = "furnace_control"
 
 class Furnace_Control(Thread):
     def __init__(self, object_group, config):
@@ -26,37 +30,31 @@ class Furnace_Control(Thread):
         self.og = object_group
         self.initialized = False
         
-        
         if USING_RPI_GPIO and (os.geteuid() != 0):
-            print "ERROR: Running in non-privaleged mode, Furnace_Control not running" 
+            logger.info("Running in non-privaleged mode, Furnace_Control not running") 
             return
         
         # Get parameters from the config file
-        config_sec = CONFIG_SEC_NAME
 
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        if "data_file" not in config.options(config_sec):
-            print "data_file property missing from " + config_sec + " section"
+        self.filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
+        if self.filename == None:
             return
-        self.filename = config.get(config_sec, "data_file")
 
-        if "data_directory" not in config.options(config_sec):
-            print "data_directory property missing from " + config_sec + " section"
+        data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        if data_directory == None:
             return
-        data_directory = config.get(config_sec, "data_directory")
         
         # Get the device pins from the config file
         self.zones = self.og.thermostat.getDeviceNames()
         self.pins = {}
-
         for device in self.zones:
-            if device not in config.options(config_sec):
-                print device+" property missing from " + config_sec + " section"
+            pin_str = config_utils.get_config_param( config, CONFIG_SEC_NAME, device)
+            if pin_str == None:
                 return
-            self.pins[device] = int(config.get(config_sec, device))
+            self.pins[device] = int(pin_str)
         
         
         # Setup the GPIO
@@ -66,13 +64,13 @@ class Furnace_Control(Thread):
                 GPIO.setup(self.pins[zone], GPIO.OUT)
                 self.off(self.pins[zone])
         except:
-            print "Error: furnace_control: init: " + repr(sys.exc_info())
+            logger.error("Error: furnace_control: init: " + repr(sys.exc_info()))
             GPIO.cleanup()
             return
         
         
         # Setup data logger
-        self.data_logger = logger.Logger( data_directory, self.filename, "furnace", self.zones ) 
+        self.data_logger = data_logger.Data_Logger( data_directory, self.filename, "furnace", self.zones ) 
         
         self.running = False
         self.initialized = True
@@ -110,8 +108,10 @@ class Furnace_Control(Thread):
     
     def run(self):
         
+        logger.info( "Thread started" )
+        
         if not self.initialized:
-            print "Warning: started before initialized, not running"
+            logger.error( "Furnace_Control: Started before initialized, not running" )
             return
         
         f = open("logs/furnace_log","a")
@@ -119,6 +119,8 @@ class Furnace_Control(Thread):
         self.running = True
         while self.running:
             
+            logger.info( "Thread executed" )
+        
             f.write("#\n")
             
             zones_that_are_heating = []
@@ -152,6 +154,9 @@ class Furnace_Control(Thread):
                     time.sleep(1)
             
         f.close()
+        
+        logger.info( "Thread stopped" )
+        
     
     def get_html(self):
         html = """

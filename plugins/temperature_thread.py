@@ -2,7 +2,9 @@ import os
 import sys
 import time
 import datetime
+import logging
 from threading import Thread, Lock
+from utilities import config_utils
 
 
 #
@@ -16,6 +18,8 @@ from threading import Thread, Lock
 
 CONFIG_SEC_NAME = "temperature_thread"
 
+logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+
 class Temperature_Thread(Thread):
     def __init__(self, object_group, config):
         Thread.__init__(self, name=CONFIG_SEC_NAME)
@@ -25,21 +29,18 @@ class Temperature_Thread(Thread):
         self.run_lock = Lock()
         self.running = False
         self.current_temps = {}
-        config_sec = "temperature_thread"
-
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
+        
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        if "temp_data_dir" not in config.options(config_sec):
-            print "temp_data_dir property missing from " + config_sec + " section"
+        self.temp_data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "temp_data_dir")
+        if self.temp_data_directory == None:
             return
 
-        if "data_file" not in config.options(config_sec):
-            print "data_file property missing from " + config_sec + " section"
+        self.filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
+        if self.temp_data_directory == None:
             return
 
-        self.filename = config.get(config_sec, "data_file")
         self.device_names = self.og.spark.getDeviceNames(postfix="_floor_temp")
         
         for device in self.device_names:
@@ -47,7 +48,6 @@ class Temperature_Thread(Thread):
         self.current_average_temperature = 0.0
 
         # Create the data directory if it does not exist
-        self.temp_data_directory = config.get(config_sec, "temp_data_dir")
         if not os.path.exists(self.temp_data_directory):
             os.makedirs(self.temp_data_directory)
         
@@ -65,23 +65,22 @@ class Temperature_Thread(Thread):
     
     def getDeviceNames(self):
         if not self.initialized:
-            print "Warning: getDeviceNames called before initialized"
+            logger.warning( "Warning: getDeviceNames called before initialized" )
             return []
         
         return self.device_names
     
     def getPrettyDeviceNames(self):
         if not self.initialized:
-            print "Warning: getPrettyDeviceNames called before initialized"
+            logger.warning( "Warning: getPrettyDeviceNames called before initialized" )
             return []
         
         return self.og.spark.getPrettyDeviceNames(postfix="_floor_temp")
     
     
     def setup_data_file(self):
-        
         if not self.initialized:
-            print "Warning: Temperature_Thread: setup_data_file called before initialized."
+            logger.warning( "Warning: Temperature_Thread: setup_data_file called before initialized." )
             return
         
         today = datetime.date.today().strftime('temperatures_%Y_%m_%d.csv')
@@ -106,14 +105,16 @@ class Temperature_Thread(Thread):
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
         except:
-            print "Temperature_Thread: Failed to open", self.filename, ":", sys.exc_info()[1]
+            logger.warning( "Temperature_Thread: Failed to open", self.filename, ":", sys.exc_info()[1] )
             return
         
     
     def run(self):
         
+        logger.info( "Thread started" )
+        
         if not self.initialized:
-            print "Warning: Temperature_Thread started before initialized, not running."
+            logger.warning( "Warning: Temperature_Thread started before initialized, not running." )
             return
         
         self.setup_data_file()
@@ -122,7 +123,9 @@ class Temperature_Thread(Thread):
         
         self.running = self.run_lock.acquire()
         while self.running:
-          
+              
+            logger.info( "Thread executing" )
+        
             t = {}
             x = 0.0
             count = 0
@@ -137,7 +140,7 @@ class Temperature_Thread(Thread):
                 except (KeyboardInterrupt, SystemExit):
                     raise
                 except:
-                    print "Error getting temperature ("+device+") setting to null"
+                    logger.error( "Error getting temperature ("+device+") setting to null" )
                     t[device] = "null"
                     self.current_temps[device] = None
           
@@ -164,6 +167,9 @@ class Temperature_Thread(Thread):
                     time.sleep(1)
         
         self.run_lock.release()
+        
+        logger.info( "Thread stopped" )
+        
   
     def stop(self):
         self.running = False
@@ -179,7 +185,7 @@ class Temperature_Thread(Thread):
                 return -1000.0
             else:
                 return self.current_temps[device]
-        print "WARNING:",device,"not found" 
+        logger.error( "WARNING:",device,"not found" ) 
         return -1000.0
     
     def get_html(self):
@@ -259,55 +265,3 @@ class Temperature_Thread(Thread):
         
         return jscript
     
-#    def get_history(self, days=1, seconds=0):
-#        
-#        # start_time is "now" minus days and seconds
-#        # only this much data will be shown
-#        start_time = datetime.datetime.now() - datetime.timedelta(days,seconds)
-#        
-#        # Load the data from the file
-#        self.mutex.acquire()
-#        file_handle = open(self.filename, 'r')
-#        csvreader = csv.reader(file_handle)
-#        tempdata = []
-#        try:
-#            for row in csvreader:
-#                tempdata.append(row)
-#        except csv.Error, e:
-#            print 'ERROR: file %s, line %d: %s' % (self.filename, csvreader.line_num, e)
-#        self.mutex.release()
-#        
-#        # Build the return string
-#        return_string = ""
-#        for i, row in enumerate(tempdata):
-#            
-#            # Skip the ones before the start_time
-#            dt = datetime.datetime.fromtimestamp(float(row[0]))
-#            if dt < start_time:
-#                continue
-#            
-#            time = dt.strftime('%I:%M:%S %p')
-#            temp1 = row[1]
-#            temp2 = row[2]
-#            temp3 = row[3]
-#            
-#            return_string += ("        ['%s',  %s, %s, %s],\n" % (time,temp1,temp2,temp3))
-#        
-#        if len(return_string) > 2:
-#            return_string = return_string[:-2]
-#        
-#        return return_string
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            

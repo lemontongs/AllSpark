@@ -4,8 +4,9 @@ import sys
 import time
 import datetime
 import os
+import logging
 from threading import Thread, Lock
-
+from utilities import config_utils
 
 #
 # Example usage:
@@ -18,29 +19,25 @@ from threading import Thread, Lock
 
 CONFIG_SEC_NAME = "user_thread"
 
+logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+
 class User_Thread(Thread):
     def __init__(self, object_group, config):
         Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.og = object_group
         self.initialized = False
         
-        config_sec = CONFIG_SEC_NAME
-        
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
-            return
-        
-        if "data_file" not in config.options(config_sec):
-            print "data_file property missing from " + config_sec + " section"
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        self.filename = config.get(config_sec, "data_file")
-        
-        if "users" not in config.options(config_sec):
-            print "users property missing from " + config_sec + " section"
+        self.filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
+        if self.filename == None:
             return
-        
-        usernames = config.get(config_sec, "users").split(",")
+
+        usernames = config_utils.get_config_param( config, CONFIG_SEC_NAME, "users")
+        if usernames == None:
+            return
+        usernames = usernames.split(",")
         
         self.users = {}
         
@@ -60,7 +57,7 @@ class User_Thread(Thread):
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
         except:
-            print "Failed to open", self.filename, ":", sys.exc_info()[1]
+            logger.error( "Failed to open" + self.filename + ":" + sys.exc_info()[1] )
             return
         
         self.initialized = True
@@ -83,14 +80,15 @@ class User_Thread(Thread):
     
     def run(self):
         
+        logger.info( "Thread started" )
+        
         if not self.initialized:
-            print "Warning: start called before initialized, not running"
+            logger.error( "Start called before initialized, not running" )
             return
         
         if os.geteuid() != 0:
-            print "ERROR: Running in non-privaleged mode, User_Thread not running" 
+            logger.warning( "Running in non-privaleged mode, User_Thread not running" ) 
             return
-        
         
         #############
         # MAIN LOOP #
@@ -98,6 +96,8 @@ class User_Thread(Thread):
         self.running = True
         while self.running:
           
+            logger.info( "Thread executed" )
+        
             #
             # Check if a user is here now
             #
@@ -135,7 +135,9 @@ class User_Thread(Thread):
             for _ in range(30):
                 if self.running:
                     time.sleep(1)
-  
+        
+        logger.info( "Thread stopped" )
+        
     def stop(self):
         self.running = False
         self.file_handle.close()
@@ -158,7 +160,7 @@ class User_Thread(Thread):
             if case_sensitive_user.lower() == user.lower():
                 return self.users[case_sensitive_user]['is_home'] 
         
-        print "Warning: unknown user: "+user
+        logger.warning( "Warning: unknown user: "+user )
         return False
     
     def get_html(self):
@@ -288,9 +290,7 @@ class User_Thread(Thread):
 
 if __name__ == "__main__":
     
-    user = User_Thread(filename = "user_state.csv", 
-                       users = [("Matt","xx:xx:xx:xx:xx:xx")])
-
+    user = User_Thread(filename = "user_state.csv", users = [("Matt","xx:xx:xx:xx:xx:xx")])
 
     print user.get_history()
 

@@ -4,8 +4,9 @@ import sys
 import time
 import datetime
 import psutil
+import logging
 from threading import Thread, Lock
-
+from utilities import config_utils
 
 #
 # Example usage:
@@ -17,29 +18,28 @@ from threading import Thread, Lock
 
 CONFIG_SEC_NAME = "memory_thread"
 
+logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+
 class Memory_Thread(Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self)
+        Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.og = object_group
         self.initialized = False
         self.mutex = Lock()
+        self.run_lock = Lock()
         self.running = False
-        config_sec = CONFIG_SEC_NAME
-
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
+        
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        if "data_file" not in config.options(config_sec):
-            print "data_file property missing from " + config_sec + " section"
+        self.filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
+        if self.filename == None:
             return
 
-        self.filename = config.get(config_sec, "data_file")
-
-        if "collect_period" not in config.options(config_sec):
+        if "collect_period" not in config.options( CONFIG_SEC_NAME ):
             self.collect_period = 60
         else:
-            self.collect_period = float(config.get(config_sec, "collect_period", True))
+            self.collect_period = float(config.get( CONFIG_SEC_NAME, "collect_period", True ) )
         
         try:
             self.file_handle = open(self.filename, 'a+')
@@ -53,7 +53,7 @@ class Memory_Thread(Thread):
     @staticmethod
     def get_template_config(config):
         config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME,"data_directory", "data")
+        config.set(CONFIG_SEC_NAME, "data_directory", "data")
         config.set(CONFIG_SEC_NAME, "data_file", "%(data_directory)s/mem_usage.csv")
         
     def isInitialized(self):
@@ -61,22 +61,33 @@ class Memory_Thread(Thread):
     
     def run(self):
         
+        logger.info( "Thread started" )
+        
         if not self.initialized:
-            print "Warning: Memory_Thread started before initialized, not running."
+            logger.warning( "Memory_Thread started before initialized, not running." )
             return
         
-        self.running = True
+        self.running = self.run_lock.acquire()
         while self.running:
           
+            logger.info( "Thread executing" )
+        
             self.mutex.acquire()
             self.file_handle.write(str(time.time()) + "," + str(psutil.phymem_usage().percent) + "\n")
             self.file_handle.flush()
             self.mutex.release()
           
-            time.sleep(self.collect_period)
+            for _ in range(self.collect_period):
+                if self.running:
+                    time.sleep(1)
+        
+        self.run_lock.release()
+        logger.info( "Thread stopped" )
+        
   
     def stop(self):
         self.running = False
+        self.run_lock.acquire() # Wait for the thread to stop
         self.file_handle.close()
     
     def get_html(self):
@@ -157,7 +168,7 @@ class Memory_Thread(Thread):
             for row in csvreader:
                 memdata.append(row)
         except csv.Error, e:
-            print 'ERROR: file %s, line %d: %s' % (self.filename, csvreader.line_num, e)
+            logger.error( 'Memory_Thread: ERROR: file %s, line %d: %s' % (self.filename, csvreader.line_num, e) )
         self.mutex.release()
         
         # Build the return string

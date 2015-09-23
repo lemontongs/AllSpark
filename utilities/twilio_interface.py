@@ -1,35 +1,30 @@
 
 from twilio.rest import TwilioRestClient
+from utilities import config_utils
+import logging
 
-base_url = 'https://api.twilio.com/2010-04-01'
+CONFIG_SEC_NAME = "twilio"
+
+logger = logging.getLogger('allspark.'+CONFIG_SEC_NAME)
 
 class Twilio_Interface():
     def __init__(self, config):
         self.initialized = False
-
-        config_sec = "twilio"
         
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
-            return
-        
-        if "sid" not in config.options(config_sec):
-            print "sid property missing from " + config_sec + " section"
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        sid = config.get(config_sec, "sid")
-                
-        if "auth" not in config.options(config_sec):
-            print "auth property missing from " + config_sec + " section"
+        sid = config_utils.get_config_param( config, CONFIG_SEC_NAME, "sid")
+        if sid == None:
             return
-
-        auth = config.get(config_sec, "auth")
-                
-        if "number" not in config.options(config_sec):
-            print "number property missing from " + config_sec + " section"
+               
+        auth = config_utils.get_config_param( config, CONFIG_SEC_NAME, "auth")
+        if auth == None:
             return
-
-        self.number = config.get(config_sec, "number")
+               
+        self.number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "number")
+        if self.number == None:
+            return
         
         self.client = TwilioRestClient(sid, auth)
         

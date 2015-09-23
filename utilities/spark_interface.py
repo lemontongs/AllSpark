@@ -2,9 +2,12 @@
 from datetime import datetime
 import os
 import requests
+import logging
 from threading import Lock
 
 base_url = 'https://api.spark.io/v1/'
+
+logger = logging.getLogger('allspark.spark_interface')
 
 class Spark_Interface():
     def __init__(self, object_group, auth_filename = "spark_auth.txt"):
@@ -13,7 +16,7 @@ class Spark_Interface():
         self.mutex = Lock()
         
         if not os.access(auth_filename, os.R_OK):
-            print "Error: failure to read auth file ("+auth_filename+"). File unreadable or does not exist."
+            logger.error( "Error: failure to read auth file ("+auth_filename+"). File unreadable or does not exist." )
             return
         
         f = open(auth_filename, 'r')
@@ -22,7 +25,7 @@ class Spark_Interface():
         
         auth = content.strip().split(':')
         if len(auth) != 2:
-            print "Error: failure to read auth file ("+auth_filename+"). Must contain 'username:password'"
+            logger.error( "Error: failure to parse auth file ("+auth_filename+"). Must contain 'username:password'" )
             return
         
         username = auth[0]
@@ -31,7 +34,7 @@ class Spark_Interface():
         r = requests.get(base_url+"access_tokens", auth=(username, password))
         
         if r.status_code != 200:
-            print "Error: Could not get token."
+            logger.error( "Error: Could not get token." )
             return
         
         j = r.json()
@@ -46,7 +49,7 @@ class Spark_Interface():
                     # delete
                     r = requests.delete(base_url+"access_tokens/"+token_data['token'], auth=(username, password))
                     if r.status_code != 200:
-                        print "Warning: Could not delete token ("+token_data['token']+"): "+r.reason
+                        logger.warning( "Warning: Could not delete token ("+token_data['token']+"): "+r.reason )
                 else:
                     token = token_data['token']
         
@@ -54,7 +57,7 @@ class Spark_Interface():
             # create new token
             r = requests.post("https://api.spark.io/oauth/token", data={'grant_type':'password','username':username,'password':password}, auth=('spark','spark'))
             if r.status_code != 200:
-                print "Warning: Could not create token: "+r.reason
+                logger.warning( "Warning: Could not create token: "+r.reason )
                 return
             token = r.json()['access_token']
         
@@ -63,13 +66,13 @@ class Spark_Interface():
         r = requests.get(base_url+"devices"+self.access_token)
         
         if r.status_code != 200:
-            print "Error: Could not get devices: " + r.reason
+            logger.error( "Could not get devices: " + r.reason )
             self.devices = []
         
         self.devices = [ (x['name'], x['id']) for x in r.json() ]
         
         for device in [ n[0] for n in self.devices ]:
-            print "Found particle device:", device
+            logger.info( "Found particle device:" + device )
         
         self.initialized = True
     
@@ -95,7 +98,7 @@ class Spark_Interface():
         if self.initialized:
         
             if deviceName not in [ n[0] for n in self.devices ]:
-                print "Error: requested device name ("+deviceName+") not found"
+                logger.warning( "Error: requested device name ("+deviceName+") not found" )
                 return None
             
             deviceID = [ n[1] for n in self.devices if n[0] == deviceName ]
@@ -108,8 +111,7 @@ class Spark_Interface():
                 if r.status_code == 200:
                     result = r.json()['result']
                 else:
-                    print "getVariable: Could not get '"+variable+"' from '"+deviceName+"': "+r.reason
-                
+                    logger.warning( "getVariable: Could not get '"+variable+"' from '"+deviceName+"': "+r.reason )
             except:
                 pass
             

@@ -1,20 +1,18 @@
 #! /usr/bin/python
 
 import ConfigParser
+import logging
 import os
 import sys
 import signal
 import time
-import threading
 
 from utilities import object_group
-
-
-DEBUG = False
+from utilities import config_utils
 
 template_contents = None
-
 config_filename = "data/config.cfg"
+GENERAL_CONFIG_SEC = "general"
 
 ######################################################################
 # Functions
@@ -33,8 +31,7 @@ def write_template_config():
 def build_html_file(filename, og):
     global template_contents
     
-    if DEBUG:
-        print "building file"
+    logging.getLogger("allspark").debug("building HTML file")
     
     if template_contents == None:
         f = open("thermostat_template.html", "r")
@@ -43,8 +40,7 @@ def build_html_file(filename, og):
     
     content = template_contents % ( og.get_javascript(), og.get_html() )
     
-    if DEBUG:
-        print "writing file"
+    logging.getLogger("allspark").debug("writing HTML file")
     
     remove_file(filename)
     f = open(filename, "w+")
@@ -97,13 +93,52 @@ if len(sys.argv) == 2:
 
 config = parse_config(config_filename)
 
-html_filename = config.get("general","html_filename")
+log_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_filename")
+if log_filename == None:
+    os._exit(1)
+    
+log_level = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_level")
+if log_level == None:
+    os._exit(1)
+
+html_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "html_filename")
+if html_filename == None:
+    os._exit(1)
+
+data_directory = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "data_directory")
+if data_directory == None:
+    os._exit(1)
+
+if not os.path.exists(data_directory):
+    os.makedirs(data_directory)
 
 check_permissions(html_filename)
 
-data_dir = config.get("general","data_directory")
-if not os.path.exists(data_dir):
-    os.makedirs(data_dir)
+if log_level not in logging._levelNames:
+    print "WARNING: Invalid log level detected '"+log_level+"'. Using DEBUG log level."
+    log_level = "DEBUG"
+
+############################################################################
+# Set up the logger
+############################################################################
+format_str = '%(asctime)s %(name)-30s %(levelname)-8s %(message)s'
+logging.getLogger('').handlers = []
+logging.basicConfig(level=logging._levelNames[log_level],
+                    format=format_str,
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    filename=log_filename,
+                    filemode='w')
+
+# define a Handler which writes INFO messages or higher to the sys.stderr
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(logging.Formatter(format_str))
+
+# add the handler to the logger
+logging.getLogger('allspark').addHandler(console)
+logging.getLogger("requests").setLevel(logging.WARNING)
+
+logging.getLogger('allspark').info("System Started!")
 
 ############################################################################
 # Instantiate and initialize the plugins
@@ -111,7 +146,7 @@ if not os.path.exists(data_dir):
 og = object_group.Object_Group(config)
 
 if not og.initialized:
-    print "Error creating threads"
+    logging.error("Error creating threads")
     sys.exit(1)
 
 og.start()
@@ -120,7 +155,7 @@ og.start()
 # Cleanup
 ############################################################################
 def receive_signal(signum, stack):
-    print "Caught signal:", str(signum), "closing threads..."
+    logging.getLogger('allspark').info( "Caught signal: " + str(signum) + " closing threads..." )
     og.stop()
     os._exit(0)
 
@@ -136,9 +171,7 @@ while True:
     time.sleep(60)
     #os.system("/home/mlamonta/bin/blink1-tool -q --off")
     
-    for t in threading.enumerate():
-        print t
-        
+       
 
 
 

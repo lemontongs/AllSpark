@@ -1,28 +1,27 @@
 
 import ConfigParser
 import os
+import logging
 from threading import Lock
-
+from utilities import config_utils
 
 CONFIG_SEC_NAME = "set_point"
 
+logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
 class Set_Point():
     def __init__(self, object_group, config):
         self.og = object_group
         self.initialized = False
         self.set_point_lock = Lock()
-        config_sec = CONFIG_SEC_NAME
 
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        if "set_point_file" not in config.options(config_sec):
-            print "set_point_file property missing from " + config_sec + " section"
+        self.set_point_filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "set_point_file")
+        if self.set_point_filename == None:
             return
-        self.set_point_filename = config.get(config_sec, "set_point_file")
-        
+
         # Create the set point file if it does not yet exist
         self.set_point_config = ConfigParser.ConfigParser()
         self.set_point_section = 'set_points'
@@ -71,10 +70,10 @@ class Set_Point():
                 pass
             
             if 50 > t or t > 90:
-                print "WARNING: set point for '" + device + "' is out of bounds (<50 or >90). Got: " + str(t) + ". Setting it to 65.0"
+                logger.warning( "set point for '" + device + "' is out of bounds (<50 or >90). Got: " + str(t) + ". Setting it to 65.0" )
                 t = 65.0
             
-            self.zones[device] = {'set_point':t}
+            self.zones[device] = { 'set_point':t }
             self.set_point_config.set(self.set_point_section, device, t)
             
         
@@ -112,7 +111,7 @@ class Set_Point():
             self.set_point_lock.acquire()
             
             if zone_name not in self.zones.keys():
-                print "Warning: get_set_point:", zone_name, "not found"
+                logger.warning( "Warning: get_set_point: " + zone_name + " not found" )
                 return 60.0
             
             set_point = self.rules['away_set_point']
@@ -131,7 +130,7 @@ class Set_Point():
         
     def parse_set_point_message(self, msg):
         if len(msg.split(',')) != 3:
-            print "Error parsing set_point message"
+            logger.warning( "Error parsing set_point message" )
             return
         
         zone = msg.split(',')[1]
@@ -139,7 +138,7 @@ class Set_Point():
         self.set_point_lock.acquire()
         try:
             if zone not in self.zones.keys():
-                print "Error parsing set_point message: "+zone+" not found"
+                logger.warning( "Error parsing set_point message: "+zone+" not found" )
                 self.set_point_lock.release()
                 return
                 
@@ -248,18 +247,3 @@ class Set_Point():
         
         return jscript
     
-
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            

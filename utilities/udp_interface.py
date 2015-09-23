@@ -1,5 +1,7 @@
 
 from threading import Thread
+from utilities import config_utils
+import logging
 import socket
 import select
 import Queue
@@ -10,29 +12,25 @@ import Queue
 
 CONFIG_SEC_NAME = "udp"
 
+logger = logging.getLogger('allspark.'+CONFIG_SEC_NAME)
+
 class UDP_Interface(Thread):
     def __init__(self, config):
         Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.initialized = False
+        
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+            return
 
-        config_sec = CONFIG_SEC_NAME
-        
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
+        self.multicast_address = config_utils.get_config_param( config, CONFIG_SEC_NAME, "multicast_address")
+        if self.multicast_address == None:
             return
         
-        if "multicast_address" not in config.options(config_sec):
-            print "multicast_address property missing from " + config_sec + " section"
+        port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "port")
+        if port == None:
             return
-        self.multicast_address = config.get(config_sec, "multicast_address")
+        port = int(port)
         
-        
-        if "port" not in config.options(config_sec):
-            print "port property missing from " + config_sec + " section"
-            return
-        port = int(config.get(config_sec, "port"))
-               
-
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_TTL, 20)
@@ -57,7 +55,6 @@ class UDP_Interface(Thread):
     
     def get(self, timeout=0):
         if self.initialized:
-            
             try:
                 if timeout > 0:
                     msg = self.messages.get(True, timeout)
@@ -71,8 +68,10 @@ class UDP_Interface(Thread):
     
     def run(self):
         
+        logger.info( "Thread started" )
+        
         if not self.initialized:
-            print "Warning: start called before initialized, not running"
+            logger.error( "Start called before initialized, not running" )
             return
         
         #############
@@ -83,14 +82,18 @@ class UDP_Interface(Thread):
             
             # Wait for data
             ready = select.select([self.sock], [], [], 1) # 1 second timeout
+            
+            logger.info( "Thread executed" )
+        
             if ready[0]:
                 data, sender_addr = self.sock.recvfrom(4096)
                 self.messages.put( (sender_addr, data) )
                 
-        
         # Unregister multicast receive membership, then close the port
         self.sock.setsockopt(socket.SOL_IP, socket.IP_DROP_MEMBERSHIP, socket.inet_aton(self.multicast_address) + socket.inet_aton('0.0.0.0'))
         self.sock.close()
+        
+        logger.info( "Thread stopped" )
         
 
 if __name__ == "__main__":

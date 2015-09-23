@@ -9,7 +9,12 @@ import comms_thread
 import spark_interface
 import twilio_interface
 import message_broadcast
+import config_utils
+import logging
 
+logger = logging.getLogger('allspark.object_group')
+
+CONFIG_SEC_NAME = "general"
 
 class Object_Group():
     def __init__(self, config):
@@ -19,16 +24,18 @@ class Object_Group():
         ############################################################################
         # Spark Interface
         ############################################################################
-        if "spark_auth_file" not in config.options("general"):
-            print "spark_auth_file property missing from general section"
+        if not config_utils.check_config_section(config, CONFIG_SEC_NAME):
             return
-
-        spark_auth_filename = config.get("general", "spark_auth_file")
+        
+        spark_auth_filename = \
+            config_utils.get_config_param( config, CONFIG_SEC_NAME, "spark_auth_file")
+        if spark_auth_filename == None:
+            return
         
         self.spark = spark_interface.Spark_Interface(self, spark_auth_filename)
         
         if not self.spark.isInitialized():
-            print "Error creating spark interface"
+            logger.error( "Failed to create spark interface" )
             return
 
         
@@ -38,7 +45,7 @@ class Object_Group():
         self.thermostat = temperature_thread.Temperature_Thread(self, config = config)
 
         if not self.thermostat.isInitialized():
-            print "Error creating temperature thread"
+            logger.error( "Failed to create temperature thread" )
             return
 
 
@@ -48,7 +55,7 @@ class Object_Group():
         self.user_thread = user_thread.User_Thread(self, config = config)
 
         if not self.user_thread.isInitialized():
-            print "Error creating user thread"
+            logger.error( "Failed to create user thread" )
             return
 
 
@@ -58,7 +65,7 @@ class Object_Group():
         self.mem = memory_thread.Memory_Thread(self, config = config)
 
         if not self.mem.isInitialized():
-            print "Error creating memory thread"
+            logger.error( "Failed to create memory thread" )
             return
 
 
@@ -68,7 +75,7 @@ class Object_Group():
         self.furnace_ctrl = furnace_control.Furnace_Control(self, config = config)
 
         if not self.furnace_ctrl.isInitialized():
-            print "Error creating furnace controller"
+            logger.error( "Failed to create furnace controller" )
             return
 
         ############################################################################
@@ -77,7 +84,7 @@ class Object_Group():
         self.set_point = set_point.Set_Point(self, config = config)
 
         if not self.set_point.isInitialized():
-            print "Error creating set point object"
+            logger.error( "Failed to create set point object" )
             return
 
         ############################################################################
@@ -86,7 +93,7 @@ class Object_Group():
         self.comms = comms_thread.Comms_Thread(port = 5555)
 
         if not self.comms.isInitialized():
-            print "Error creating comms thread"
+            logger.error( "Failed to create comms thread" )
             return
 
         self.comms.register_callback("set_point", self.set_point.parse_set_point_message)
@@ -97,7 +104,7 @@ class Object_Group():
         self.security = security_thread.Security_Thread(self, config = config)
 
         if not self.security.isInitialized():
-            print "Error creating security thread"
+            logger.error( "Failed to create security thread" )
             return
         
         ############################################################################
@@ -106,16 +113,14 @@ class Object_Group():
         self.twilio = twilio_interface.Twilio_Interface(config = config)
 
         if not self.twilio.isInitialized():
-            print "Error creating twilio interface"
+            logger.error( "Failed to create twilio interface" )
             return
-        
         
         ############################################################################
         # UDP Multicast
         ############################################################################
         self.broadcast = message_broadcast.Message_Broadcast()
 
-        
         self.initialized = True
         
         

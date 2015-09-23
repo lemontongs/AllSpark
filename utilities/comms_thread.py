@@ -5,10 +5,13 @@ import time
 from threading import Thread, Lock
 import os
 import zmq
+import logging
+
+logger = logging.getLogger('allspark.comms_thread')
 
 class Comms_Thread(Thread):
     def __init__(self, port):
-        Thread.__init__(self)
+        Thread.__init__(self, name="comms_thread")
         self.initialized = False
         self.run_lock = Lock()
         self.port = port
@@ -18,7 +21,7 @@ class Comms_Thread(Thread):
             self.socket = self.context.socket(zmq.PAIR)
             self.socket.bind("tcp://*:" + str(self.port))
         except:
-            print "Failed to start comms thread:", sys.exc_info()
+            logger.error( "Failed to start comms thread: " + repr(sys.exc_info()) )
             return
         
         self.callbacks = {}
@@ -49,8 +52,10 @@ class Comms_Thread(Thread):
 
     def run(self):
         
+        logger.info( "Thread started" )
+        
         if not self.initialized:
-            print "Warning: started before initialized, not running"
+            logger.error( "Started before initialized, not running" )
             return
         
         f = open("logs/comms_log","a")
@@ -59,6 +64,9 @@ class Comms_Thread(Thread):
         while self.running:
             
             msg = self.socket.recv()
+            
+            logger.info( "Thread executed" )
+        
             f.write(str(time.time())+" GOT: "+str(msg)+"\n")
             f.flush()
             
@@ -80,6 +88,9 @@ class Comms_Thread(Thread):
                 func(msg)
              
         f.close()
+        
+        logger.info( "Thread stopped" )
+        
         self.run_lock.release()
 
 #

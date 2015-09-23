@@ -3,10 +3,12 @@ import sys
 import csv
 import time
 import datetime
+import logging
 from threading import Lock
 
+logger = logging.getLogger('allspark.data_logger')
 
-class Logger():
+class Data_Logger():
     def __init__(self, log_directory, filename, archive_prefix, data_item_names):
         self.initialized = False
         self.mutex = Lock()
@@ -30,7 +32,7 @@ class Logger():
     
     def setup_data_file(self):
         if not self.initialized:
-            print "Warning: Logger: setup_data_file called before initialized."
+            logger.error( "setup_data_file called before initialized." )
             return
         
         today = datetime.date.today().strftime( self.archive_prefix + '_%Y_%m_%d.csv' )
@@ -55,14 +57,14 @@ class Logger():
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
         except:
-            print "Logger: Failed to open", self.filename, ":", sys.exc_info()[1]
+            logger.error( "Failed to open "+ self.filename +" : " + repr(sys.exc_info()[1]) )
             return
         
     
     def add_data(self, data): # data should be an array of strings
         
         if not self.initialized:
-            print "Warning: Logger: add_data called before initialized."
+            logger.error( "add_data called before initialized." )
             return
         
         self.mutex.acquire()

@@ -1,14 +1,18 @@
 
 import os
 import time
+import logging
 from threading import Thread, Lock
 from utilities import udp_interface
-from utilities import logger
+from utilities import data_logger
+from utilities import config_utils
 
 OPEN   = '0'
 CLOSED = '1'
 
 CONFIG_SEC_NAME = "security_thread"
+
+logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
 class Security_Thread(Thread):
     def __init__(self, object_group, config):
@@ -16,60 +20,58 @@ class Security_Thread(Thread):
         self.og = object_group
         self.initialized = False
         self.mutex = Lock()
+        self.run_lock = Lock()
         self.running = False
-        config_sec = CONFIG_SEC_NAME
-
-        if config_sec not in config.sections():
-            print config_sec + " section missing from config file"
+        
+        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        if "monitor_device_name" not in config.options(config_sec):
-            print "monitor_device_name property missing from " + config_sec + " section"
+        self.monitor_device_name = config_utils.get_config_param( config, CONFIG_SEC_NAME, "monitor_device_name")
+        if self.monitor_device_name == None:
             return
-        self.monitor_device_name = config.get(config_sec, "monitor_device_name")
 
-        if "breach_number" not in config.options(config_sec):
-            print "breach_number property missing from " + config_sec + " section"
+        self.breach_number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "breach_number")
+        if self.breach_number == None:
             return
-        self.breach_number = int(config.get(config_sec, "breach_number"))
-        
-        if "num_zones" not in config.options(config_sec):
-            print "num_zones property missing from " + config_sec + " section"
+
+        self.num_zones = config_utils.get_config_param( config, CONFIG_SEC_NAME, "num_zones")
+        if self.num_zones == None:
             return
-        self.num_zones = int(config.get(config_sec, "num_zones"))
-        
-        if "data_directory" not in config.options(config_sec):
-            print "data_directory property missing from " + config_sec + " section"
+        self.num_zones = int( self.num_zones )
+
+        data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        if data_directory == None:
             return
-        data_directory = config.get(config_sec, "data_directory")
-        
-        if "data_file" not in config.options(config_sec):
-            print "data_file property missing from " + config_sec + " section"
+
+        data_file = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
+        if data_directory == None:
             return
-        data_file = config.get(config_sec, "data_file")
-        
+
         self.zones = []
         zone_names = []
         
         for zone in range(self.num_zones):
             zone_index = "zone_"+str(zone)
             
-            if zone_index not in config.options(config_sec):
-                print zone_index+" property missing from " + config_sec + " section"
+            if zone_index not in config.options(CONFIG_SEC_NAME):
+                print zone_index+" property missing from " + CONFIG_SEC_NAME + " section"
                 return
                 
-            self.zones.append( {'last':time.localtime(), 'state':CLOSED, 'name':config.get(config_sec, zone_index)} )
-            zone_names.append( config.get(config_sec, zone_index) )
+            self.zones.append( { 'last':time.localtime(), \
+                                 'state':CLOSED, \
+                                 'name':config.get(CONFIG_SEC_NAME, zone_index)} )
+            
+            zone_names.append( config.get(CONFIG_SEC_NAME, zone_index) )
 
         #print self.zones
 
-        if "collect_period" not in config.options(config_sec):
-            self.collect_period = 5
+        if "collect_period" not in config.options(CONFIG_SEC_NAME):
+            self.collect_period = 1
         else:
-            self.collect_period = float(config.get(config_sec, "collect_period", True))
+            self.collect_period = float(config.get(CONFIG_SEC_NAME, "collect_period", True))
         
-        # Setup data logger
-        self.data_logger = logger.Logger( data_directory, data_file, "security", zone_names ) 
+        # Setup data data_logger
+        self.data_logger = data_logger.Data_Logger( data_directory, data_file, "security", zone_names ) 
         
         # Setup UDP interface
         self.udp = udp_interface.UDP_Interface( config )
@@ -107,6 +109,7 @@ class Security_Thread(Thread):
     
     def stop(self):
         self.running = False
+        self.run_lock.acquire() # Wait for the thread to stop
         self.udp.stop()
     
     def get_html(self):
@@ -166,24 +169,28 @@ class Security_Thread(Thread):
     
     def run(self):
         
+        logger.info( "Thread started" )
+        
         if not self.initialized:
-            print "Warning: Security_Thread started before initialized, not running."
+            logger.error( "Security_Thread started before initialized, not running." )
             return
         
         self.udp.start()
         
-        self.running = True
+        self.running = self.run_lock.acquire()
         while self.running:
           
             msg = self.udp.get( timeout = self.collect_period )
             
+            logger.info( "Thread executing" )
+        
             if msg != None:
                 
                 # ( ( ip_address, port ), message )
                 ( _, state_str ) = msg
                 
                 if len(state_str) != self.num_zones:
-                    print "Invalid message received", msg
+                    logger.warning( "Invalid message received: " + msg )
                     continue
                 
                 self.mutex.acquire()
@@ -194,7 +201,7 @@ class Security_Thread(Thread):
                     
                     state = state_str[zone]
                     
-                    # Save the closed zones for logging
+                    # Save the closed zones for logger
                     if state == OPEN:
                         zones_that_are_open.append( self.zones[zone]['name'] )
                     
@@ -205,7 +212,7 @@ class Security_Thread(Thread):
                         
                         # If nobody is home and something has changed, trigger a warning
                         if not self.og.user_thread.someone_is_present():
-                            print "SECURITY BREACH!"
+                            logger.info( "SECURITY BREACH!" + self.zones[zone]['name'] )
                             self.og.twilio.sendSMS("SECURITY BREACH! "+self.zones[zone]['name'], self.breach_number)
         
                     # <tr class="success">
@@ -234,6 +241,9 @@ class Security_Thread(Thread):
                 self.data_logger.add_data( zones_that_are_open )
                 
                 self.mutex.release()        
+        
+        self.run_lock.release()
+        logger.info( "Thread stopped" )
         
         
 if __name__ == "__main__":
