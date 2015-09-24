@@ -190,7 +190,7 @@ class Security_Thread(Thread):
                 logger.info( "Got message: " + state_str )
                 
                 if len(state_str) != self.num_zones:
-                    logger.warning( "Invalid message received: " + msg )
+                    logger.warning( "Skipping invalid message!" )
                     continue
                 
                 self.mutex.acquire()
