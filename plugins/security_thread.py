@@ -66,7 +66,7 @@ class Security_Thread(Thread):
         #print self.zones
 
         if "collect_period" not in config.options(CONFIG_SEC_NAME):
-            self.collect_period = 1
+            self.collect_period = 10
         else:
             self.collect_period = float(config.get(CONFIG_SEC_NAME, "collect_period", True))
         
@@ -212,7 +212,7 @@ class Security_Thread(Thread):
                         
                         # If nobody is home and something has changed, trigger a warning
                         if not self.og.user_thread.someone_is_present():
-                            logger.info( "SECURITY BREACH!" + self.zones[zone]['name'] )
+                            logger.info( "SECURITY BREACH! " + self.zones[zone]['name'] )
                             self.og.twilio.sendSMS("SECURITY BREACH! "+self.zones[zone]['name'], self.breach_number)
         
                     # <tr class="success">

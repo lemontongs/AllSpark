@@ -84,7 +84,7 @@ class UDP_Interface(Thread):
             
             # Wait for data
             logger.info( "Waiting for message" )
-            ready = select.select([self.sock], [], [], 1) # 1 second timeout
+            ready = select.select([self.sock], [], [], 10) # 10 second timeout
         
             if ready[0]:
                 data, sender_addr = self.sock.recvfrom(4096)
