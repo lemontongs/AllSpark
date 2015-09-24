@@ -28,6 +28,6 @@ until [[ $spark_pid -eq "" ]]; do
     spark_pid=`ps -elf | grep "python -u spark_thermostat_html_builder.py" | grep -v "grep" | awk '{print $4}'`
 done
 
-rm *.pyc
+
 
 

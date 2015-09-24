@@ -7,7 +7,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 #
-# Remove null bytes from files. These occure when the system is shut down abruptly.
+# Remove null bytes from files. These occur when the system is shut down abruptly.
 #
 #for i in `ls data/*.csv`
 #do
@@ -15,5 +15,5 @@ fi
 #done
 
 # Start
-python -u spark_thermostat_html_builder.py > logs/log 2>&1 &
+python -u spark_thermostat_html_builder.py > /dev/null 2>&1 &
 

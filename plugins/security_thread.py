@@ -187,11 +187,11 @@ class Security_Thread(Thread):
                 # ( ( ip_address, port ), message )
                 ( _, state_str ) = msg
                 
-                logger.info( "Got message: " + state_str )
-                
                 if len(state_str) != self.num_zones:
                     logger.warning( "Skipping invalid message!" )
                     continue
+                
+                logger.info( "Got message: " + state_str )
                 
                 self.mutex.acquire()
                 self.sensor_states = ""
