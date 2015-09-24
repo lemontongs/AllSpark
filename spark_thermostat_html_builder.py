@@ -34,18 +34,22 @@ def build_html_file(filename, og):
     logging.getLogger("allspark").debug("building HTML file")
     
     if template_contents == None:
+        logging.getLogger("allspark").debug("reading template")
         f = open("thermostat_template.html", "r")
         template_contents = f.read()
         f.close()
+        logging.getLogger("allspark").debug("done reading template")
     
+    logging.getLogger("allspark").debug("filling template")
     content = template_contents % ( og.get_javascript(), og.get_html() )
+    logging.getLogger("allspark").debug("done filling template")
     
     logging.getLogger("allspark").debug("writing HTML file")
-    
     remove_file(filename)
     f = open(filename, "w+")
     f.write(content)
     f.close()
+    logging.getLogger("allspark").debug("done writing HTML file")
     
 def remove_file(filename):
     try:
