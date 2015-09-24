@@ -110,7 +110,6 @@ class Security_Thread(Thread):
     def stop(self):
         self.running = False
         self.run_lock.acquire() # Wait for the thread to stop
-        self.udp.stop()
     
     def get_html(self):
         html = """
@@ -242,6 +241,8 @@ class Security_Thread(Thread):
                 self.data_logger.add_data( zones_that_are_open )
                 
                 self.mutex.release()        
+        
+        self.udp.stop()
         
         self.run_lock.release()
         logger.info( "Thread stopped" )
