@@ -1,5 +1,5 @@
 
-from threading import Thread
+from threading import Thread, Lock
 from utilities import config_utils
 import logging
 import socket
@@ -18,6 +18,7 @@ class UDP_Interface(Thread):
     def __init__(self, config):
         Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.initialized = False
+        self.run_lock = Lock()
         
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
@@ -52,6 +53,7 @@ class UDP_Interface(Thread):
             
     def stop(self):
         self.running = False
+        self.run_lock.acquire() # Wait for the thread to stop
     
     def get(self, timeout=0):
         if self.initialized:
@@ -77,7 +79,7 @@ class UDP_Interface(Thread):
         #############
         # MAIN LOOP #
         #############
-        self.running = True
+        self.running = self.run_lock.acquire()
         while self.running:
             
             # Wait for data
@@ -94,6 +96,7 @@ class UDP_Interface(Thread):
         self.sock.close()
         
         logger.info( "Thread stopped" )
+        self.run_lock.release()
         
 
 if __name__ == "__main__":

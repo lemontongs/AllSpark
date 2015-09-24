@@ -2,7 +2,7 @@
 
 import sys
 import time
-from threading import Thread
+from threading import Thread, Lock
 import os
 import imp
 import logging
@@ -29,6 +29,7 @@ class Furnace_Control(Thread):
         Thread.__init__(self, name=CONFIG_SEC_NAME)
         self.og = object_group
         self.initialized = False
+        self.run_lock = Lock()
         
         if USING_RPI_GPIO and (os.geteuid() != 0):
             logger.info("Running in non-privaleged mode, Furnace_Control not running") 
@@ -92,7 +93,7 @@ class Furnace_Control(Thread):
         if self.initialized:
             self.initialized = False
             self.running = False
-            time.sleep(2)
+            self.run_lock.acquire() # Wait for the thread to stop
             for zone in self.zones:
                 self.off(self.pins[zone])
             GPIO.cleanup()
@@ -116,7 +117,7 @@ class Furnace_Control(Thread):
         
         f = open("logs/furnace_log","a")
 
-        self.running = True
+        self.running = self.run_lock.acquire()
         while self.running:
             
             logger.info( "Thread executing" )
@@ -154,6 +155,7 @@ class Furnace_Control(Thread):
                     time.sleep(1)
             
         f.close()
+        self.run_lock.release()
         
         logger.info( "Thread stopped" )
         
