@@ -119,7 +119,7 @@ class Furnace_Control(Thread):
         self.running = True
         while self.running:
             
-            logger.info( "Thread executed" )
+            logger.info( "Thread executing" )
         
             f.write("#\n")
             

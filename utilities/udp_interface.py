@@ -81,13 +81,13 @@ class UDP_Interface(Thread):
         while self.running:
             
             # Wait for data
+            logger.info( "Waiting for message" )
             ready = select.select([self.sock], [], [], 1) # 1 second timeout
-            
-            logger.info( "Thread executed" )
         
             if ready[0]:
                 data, sender_addr = self.sock.recvfrom(4096)
                 self.messages.put( (sender_addr, data) )
+                logger.info( "Got message: " + data )
                 
         # Unregister multicast receive membership, then close the port
         self.sock.setsockopt(socket.SOL_IP, socket.IP_DROP_MEMBERSHIP, socket.inet_aton(self.multicast_address) + socket.inet_aton('0.0.0.0'))

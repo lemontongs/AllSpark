@@ -180,14 +180,15 @@ class Security_Thread(Thread):
         self.running = self.run_lock.acquire()
         while self.running:
           
+            logger.info( "Waiting for message" )
             msg = self.udp.get( timeout = self.collect_period )
-            
-            logger.info( "Thread executing" )
         
             if msg != None:
                 
                 # ( ( ip_address, port ), message )
                 ( _, state_str ) = msg
+                
+                logger.info( "Got message: " + state_str )
                 
                 if len(state_str) != self.num_zones:
                     logger.warning( "Invalid message received: " + msg )
