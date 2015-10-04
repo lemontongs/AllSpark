@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 import ConfigParser
+import datetime
 import logging
 import os
 import sys
@@ -9,6 +10,7 @@ import time
 
 from utilities import object_group
 from utilities import config_utils
+from utilities import graphite_logging
 
 template_contents = None
 config_filename = "data/config.cfg"
@@ -31,6 +33,8 @@ def write_template_config():
 def build_html_file(filename, og):
     global template_contents
     
+    start = datetime.datetime.now()
+    
     logging.getLogger("allspark").debug("building HTML file")
     
     if template_contents == None:
@@ -50,6 +54,9 @@ def build_html_file(filename, og):
     f.write(content)
     f.close()
     logging.getLogger("allspark").debug("done writing HTML file")
+    
+    end = datetime.datetime.now()
+    graphite_logging.send_data("allspark.htmlBuildTime", (end-start).total_seconds() )
     
 def remove_file(filename):
     try:

@@ -101,7 +101,8 @@ class User_Thread(Thread):
             #
             # Check if a user is here now
             #
-            result = subprocess.Popen(["arp-scan","-l"], stdout=subprocess.PIPE).stdout.read()
+            command = ["arp-scan","-l","--retry=5","--timeout=500"]
+            result = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
             now = time.time()
             for user in self.users.keys():
                 was_home = self.users[user]['is_home']
@@ -132,7 +133,7 @@ class User_Thread(Thread):
             self.file_handle.flush()
             self.mutex.release()
             
-            for _ in range(30):
+            for _ in range(10):
                 if self.running:
                     time.sleep(1)
         

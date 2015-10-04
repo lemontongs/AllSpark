@@ -5,6 +5,7 @@ import datetime
 import logging
 from threading import Thread, Lock
 from utilities import config_utils
+from utilities import graphite_logging
 
 
 #
@@ -137,6 +138,7 @@ class Temperature_Thread(Thread):
                     x = x + float(t[device])
                     self.current_temps[device] = float(t[device])
                     count = count + 1
+                    graphite_logging.send_data(logger.name+"."+device, self.current_temps[device])
                 except (KeyboardInterrupt, SystemExit):
                     raise
                 except:
