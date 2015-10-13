@@ -1,39 +1,22 @@
 #! /usr/bin/env python
 
-import sys
 import time
-from threading import Thread, Lock
-import os
-import imp
 import logging
 from utilities import data_logger
 from utilities import config_utils
+from utilities import udp_interface
+from utilities import thread_base
 
 CONFIG_SEC_NAME = "furnace_control"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-try:
-    imp.find_module('RPi')
-    import RPi.GPIO as GPIO
-    GPIO.setwarnings(False)
-    USING_RPI_GPIO = True
-except ImportError:
-    USING_RPI_GPIO = False
-    from utilities import GPIO
-    logger.info("Using local GPIO module")
 
-
-class Furnace_Control(Thread):
+class Furnace_Control(thread_base.AS_Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self, name=CONFIG_SEC_NAME)
-        self.og = object_group
-        self.initialized = False
-        self.run_lock = Lock()
+        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
         
-        if USING_RPI_GPIO and (os.geteuid() != 0):
-            logger.info("Running in non-privaleged mode, Furnace_Control not running") 
-            return
+        self.og = object_group
         
         # Get parameters from the config file
 
@@ -48,6 +31,14 @@ class Furnace_Control(Thread):
         if data_directory == None:
             return
         
+        address = config_utils.get_config_param( config, CONFIG_SEC_NAME, "address")
+        if address == None:
+            return
+        
+        port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "port")
+        if port == None:
+            return
+        
         # Get the device pins from the config file
         self.zones = self.og.thermostat.getDeviceNames()
         self.pins = {}
@@ -57,24 +48,16 @@ class Furnace_Control(Thread):
                 return
             self.pins[device] = int(pin_str)
         
-        
-        # Setup the GPIO
-        try:
-            GPIO.setmode(GPIO.BCM)
-            for zone in self.zones:
-                GPIO.setup(self.pins[zone], GPIO.OUT)
-                self.off(self.pins[zone])
-        except:
-            logger.error("Error: furnace_control: init: " + repr(sys.exc_info()))
-            GPIO.cleanup()
+        # Furnace controller interface
+        self.furnace_controller = udp_interface.UDP_Socket(address, port, CONFIG_SEC_NAME+"_interface")
+        if not self.furnace_controller.isInitialized():
+            logger.error( "Failed to initialize furnace_controller" )
             return
-        
         
         # Setup data logger
         self.data_logger = data_logger.Data_Logger( data_directory, self.filename, "furnace", self.zones ) 
         
-        self.running = False
-        self.initialized = True
+        self._initialized = True
 
     @staticmethod
     def get_template_config(config):
@@ -86,44 +69,21 @@ class Furnace_Control(Thread):
         config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_2>", "<pin for zone 2>")
         config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_3>", "<pin for zone 3>")
         
-    def isInitialized(self):
-        return self.initialized
-    
-    def stop(self):
-        if self.initialized:
-            self.initialized = False
-            self.running = False
-            self.run_lock.acquire() # Wait for the thread to stop
+    def private_run_cleanup(self):
+        if self.isInitialized() and self.isRunning():
             for zone in self.zones:
                 self.off(self.pins[zone])
-            GPIO.cleanup()
-            
+            self.furnace_controller.stop()
 
     def on(self, pin):
-        if self.initialized:
-            GPIO.output(pin,False)
+        if self.isInitialized():
+            self.furnace_controller.send_message(str(pin)+"1")
 
     def off(self, pin):
-        if self.initialized:
-            GPIO.output(pin,True)
+        if self.isInitialized():
+            self.furnace_controller.send_message(str(pin)+"0")
     
-    def run(self):
-        
-        logger.info( "Thread started" )
-        
-        if not self.initialized:
-            logger.error( "Furnace_Control: Started before initialized, not running" )
-            return
-        
-        f = open("logs/furnace_log","a")
-
-        self.running = self.run_lock.acquire()
-        while self.running:
-            
-            logger.info( "Thread executing" )
-        
-            f.write("#\n")
-            
+    def private_run(self):
             zones_that_are_heating = []
             
             for zone in self.zones:
@@ -144,20 +104,13 @@ class Furnace_Control(Thread):
                     s = "cooling"
                     self.off(pin)
                 
-                f.write("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s+"\n")
+                logger.info("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s+"\n")
                 
             self.data_logger.add_data( zones_that_are_heating )
             
-            f.flush()
-            
             for _ in range(60):
-                if self.running:
+                if self.isRunning():
                     time.sleep(1)
-            
-        f.close()
-        self.run_lock.release()
-        
-        logger.info( "Thread stopped" )
         
     
     def get_html(self):
@@ -217,9 +170,9 @@ if __name__ == "__main__":
         temp = temp + modifier
         return temp
     
-    zones = [ {'name':'top',     'pin':18, 'get_temp':get_temp},
-              {'name':'main',    'pin':23, 'get_temp':get_temp},
-              {'name':'basement','pin':24, 'get_temp':get_temp} ]
+    zones = [ {'name':'top',     'pin':3, 'get_temp':get_temp},
+              {'name':'main',    'pin':4, 'get_temp':get_temp},
+              {'name':'basement','pin':5, 'get_temp':get_temp} ]
 
     fc = Furnace_Control(zones)
     

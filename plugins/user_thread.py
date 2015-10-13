@@ -1,11 +1,11 @@
 import csv
 import subprocess
-import sys
 import time
 import datetime
 import os
 import logging
-from threading import Thread, Lock
+from threading import Lock
+from utilities import thread_base
 from utilities import config_utils
 
 #
@@ -21,11 +21,11 @@ CONFIG_SEC_NAME = "user_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class User_Thread(Thread):
+class User_Thread(thread_base.AS_Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self, name=CONFIG_SEC_NAME)
+        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        
         self.og = object_group
-        self.initialized = False
         
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
@@ -51,16 +51,16 @@ class User_Thread(Thread):
             self.users[user] = {'mac':config.get(user, "mac"), 'is_home':False, 'last_seen':0.0}
         
         self.mutex = Lock()
-        self.running = False
+        
         self.users_present = True
         try:
             self.file_handle = open(self.filename, 'a+')
             self.file_handle.seek(0,2)
-        except:
-            logger.error( "Failed to open" + self.filename + ":" + sys.exc_info()[1] )
+        except Exception as e:
+            logger.error( "Failed to open " + self.filename + ":" + str( e ) )
             return
         
-        self.initialized = True
+        self._initialized = True
     
     @staticmethod
     def get_template_config(config):
@@ -75,83 +75,61 @@ class User_Thread(Thread):
         config.add_section("user_3")
         config.set("user_3","mac", "xx:xx:xx:xx:xx:xx")
 
-    def isInitialized(self):
-        return self.initialized
-    
-    def run(self):
+    def private_run(self):
         
-        logger.info( "Thread started" )
-        
-        if not self.initialized:
-            logger.error( "Start called before initialized, not running" )
-            return
-        
-        if os.geteuid() != 0:
-            logger.warning( "Running in non-privaleged mode, User_Thread not running" ) 
-            return
-        
-        #############
-        # MAIN LOOP #
-        #############
-        self.running = True
-        while self.running:
-          
-            logger.info( "Thread executed" )
-        
-            #
-            # Check if a user is here now
-            #
-            command = ["arp-scan","-l","--retry=5","--timeout=500"]
-            result = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
-            now = time.time()
-            for user in self.users.keys():
-                was_home = self.users[user]['is_home']
-                is_home  = self.users[user]['mac'] in result
-                if is_home:
-                    self.users[user]['last_seen'] = now
-                if (now - self.users[user]['last_seen']) < 600:
-                    self.users[user]['is_home'] = True
-                else:
-                    self.users[user]['is_home'] = False
-                
-                # Fire off a message when a user arrives home
-                if not was_home and self.users[user]['is_home']:
-                    self.og.broadcast.send( user+" has arrived at home" )
+        #
+        # Check if a user is here now
+        #
+        command = ["arp-scan","-l","--retry=5","--timeout=500"]
+        result = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
+        now = time.time()
+        for user in self.users.keys():
+            was_home = self.users[user]['is_home']
+            is_home  = self.users[user]['mac'] in result
+            if is_home:
+                self.users[user]['last_seen'] = now
+            if (now - self.users[user]['last_seen']) < 600:
+                self.users[user]['is_home'] = True
+            else:
+                self.users[user]['is_home'] = False
             
-            #
-            # Write the collected data to file
-            #
-            self.mutex.acquire()
-            self.file_handle.write(str(time.time()))
-            someone_is_home = False
-            for user in self.users.keys():
-                if self.users[user]['is_home']:
-                    self.file_handle.write(","+user)
-                    someone_is_home = True
-            self.users_present = someone_is_home
-            self.file_handle.write("\n")
-            self.file_handle.flush()
-            self.mutex.release()
-            
-            for _ in range(10):
-                if self.running:
-                    time.sleep(1)
+            # Fire off a message when a user arrives home
+            if not was_home and self.users[user]['is_home']:
+                self.og.broadcast.send( user+" has arrived at home" )
         
+        #
+        # Write the collected data to file
+        #
+        self.mutex.acquire()
+        self.file_handle.write(str(time.time()))
+        someone_is_home = False
+        for user in self.users.keys():
+            if self.users[user]['is_home']:
+                self.file_handle.write(","+user)
+                someone_is_home = True
+        self.users_present = someone_is_home
+        self.file_handle.write("\n")
+        self.file_handle.flush()
+        self.mutex.release()
+            
+        for _ in range(10):
+            if self._running:
+                time.sleep(1)
+                        
         logger.info( "Thread stopped" )
         
-    def stop(self):
-        self.running = False
+    def private_run_cleanup(self):
         self.file_handle.close()
     
     def is_someone_present_string(self):
-        if not self.initialized:
+        if not self._initialized:
             return "UNKNOWN"
         if self.someone_is_present():
             return "YES"
         return "NO"
     
     def someone_is_present(self):
-        if not self.initialized:
+        if not self._initialized:
             return False
         return self.users_present
     

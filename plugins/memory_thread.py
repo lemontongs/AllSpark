@@ -5,7 +5,8 @@ import time
 import datetime
 import psutil
 import logging
-from threading import Thread, Lock
+from threading import Lock
+from utilities import thread_base
 from utilities import config_utils
 
 #
@@ -20,14 +21,13 @@ CONFIG_SEC_NAME = "memory_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class Memory_Thread(Thread):
+class Memory_Thread(thread_base.AS_Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self, name=CONFIG_SEC_NAME)
+        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        
         self.og = object_group
-        self.initialized = False
+        
         self.mutex = Lock()
-        self.run_lock = Lock()
-        self.running = False
         
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
@@ -48,7 +48,7 @@ class Memory_Thread(Thread):
             print "Failed to open", self.filename, ":", sys.exc_info()[1]
             return
         
-        self.initialized = True
+        self._initialized = True
     
     @staticmethod
     def get_template_config(config):
@@ -56,38 +56,23 @@ class Memory_Thread(Thread):
         config.set(CONFIG_SEC_NAME, "data_directory", "data")
         config.set(CONFIG_SEC_NAME, "data_file", "%(data_directory)s/mem_usage.csv")
         
-    def isInitialized(self):
-        return self.initialized
-    
-    def run(self):
+    def private_run(self):
         
-        logger.info( "Thread started" )
-        
-        if not self.initialized:
-            logger.warning( "Memory_Thread started before initialized, not running." )
-            return
-        
-        self.running = self.run_lock.acquire()
-        while self.running:
-          
-            logger.info( "Thread executing" )
-        
-            self.mutex.acquire()
+        self.mutex.acquire()
+        try:
             self.file_handle.write(str(time.time()) + "," + str(psutil.phymem_usage().percent) + "\n")
             self.file_handle.flush()
+        except:
             self.mutex.release()
-          
-            for _ in range(self.collect_period):
-                if self.running:
-                    time.sleep(1)
+            raise
         
-        self.run_lock.release()
-        logger.info( "Thread stopped" )
-        
+        self.mutex.release()
+            
+        for _ in range(self.collect_period):
+            if self._running:
+                time.sleep(1)
   
-    def stop(self):
-        self.running = False
-        self.run_lock.acquire() # Wait for the thread to stop
+    def private_run_cleanup(self):
         self.file_handle.close()
     
     def get_html(self):

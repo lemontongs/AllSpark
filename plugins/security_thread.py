@@ -2,10 +2,11 @@
 import os
 import time
 import logging
-from threading import Thread, Lock
+from threading import Lock
 from utilities import udp_interface
 from utilities import data_logger
 from utilities import config_utils
+from utilities import thread_base
 
 OPEN   = '0'
 CLOSED = '1'
@@ -14,14 +15,12 @@ CONFIG_SEC_NAME = "security_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class Security_Thread(Thread):
+class Security_Thread(thread_base.AS_Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self, name=CONFIG_SEC_NAME)
+        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        
         self.og = object_group
-        self.initialized = False
         self.mutex = Lock()
-        self.run_lock = Lock()
-        self.running = False
         
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
@@ -47,6 +46,14 @@ class Security_Thread(Thread):
         if data_directory == None:
             return
 
+        address = config_utils.get_config_param( config, CONFIG_SEC_NAME, "address")
+        if address == None:
+            return
+
+        port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "port")
+        if port == None:
+            return
+        
         self.zones = []
         zone_names = []
         
@@ -74,13 +81,13 @@ class Security_Thread(Thread):
         self.data_logger = data_logger.Data_Logger( data_directory, data_file, "security", zone_names ) 
         
         # Setup UDP interface
-        self.udp = udp_interface.UDP_Interface( config )
-        
+        self.udp = udp_interface.UDP_Socket( address, port, CONFIG_SEC_NAME+"_interface" )
         if not self.udp.isInitialized():
             return
+        self.udp.start()
         
         self.sensor_states = ""
-        self.initialized = True
+        self._initialized = True
     
     @staticmethod
     def get_template_config(config):
@@ -97,19 +104,11 @@ class Security_Thread(Thread):
         config.set(CONFIG_SEC_NAME,"zone_3", "<zone 3 name>")
         config.set(CONFIG_SEC_NAME,"zone_4", "<zone 4 name>")
         
-        
-    def isInitialized(self):
-        return self.initialized
-    
     def getSensorStates(self):
         self.mutex.acquire()
         ss = self.sensor_states
         self.mutex.release()
         return ss
-    
-    def stop(self):
-        self.running = False
-        self.run_lock.acquire() # Wait for the thread to stop
     
     def get_html(self):
         html = """
@@ -166,34 +165,24 @@ class Security_Thread(Thread):
         
         return jscript
     
-    def run(self):
+    def private_run(self):
+        logger.info( "Waiting for message" )
         
-        logger.info( "Thread started" )
-        
-        if not self.initialized:
-            logger.error( "Security_Thread started before initialized, not running." )
-            return
-        
-        self.udp.start()
-        
-        self.running = self.run_lock.acquire()
-        while self.running:
-          
-            logger.info( "Waiting for message" )
-            msg = self.udp.get( timeout = self.collect_period )
-        
-            if msg != None:
-                
-                # ( ( ip_address, port ), message )
-                ( _, state_str ) = msg
-                
-                if len(state_str) != self.num_zones:
-                    logger.warning( "Skipping invalid message!" )
-                    continue
-                
-                logger.info( "Got message: " + state_str )
-                
-                self.mutex.acquire()
+        msg = self.udp.get( timeout = self.collect_period )
+    
+        if msg != None:
+            
+            # ( ( ip_address, port ), message )
+            ( _, state_str ) = msg
+            
+            if len(state_str) != self.num_zones:
+                logger.warning( "Skipping invalid message!" )
+                return
+            
+            logger.info( "Got message: " + state_str )
+            
+            self.mutex.acquire()
+            try:
                 self.sensor_states = ""
                 zones_that_are_open = []
                 
@@ -239,13 +228,15 @@ class Security_Thread(Thread):
                     self.sensor_states += entry
                 
                 self.data_logger.add_data( zones_that_are_open )
-                
-                self.mutex.release()        
-        
+            
+            except:
+                self.mutex.release()
+                raise
+
+            self.mutex.release()
+
+    def private_run_cleanup(self):        
         self.udp.stop()
-        
-        self.run_lock.release()
-        logger.info( "Thread stopped" )
         
         
 if __name__ == "__main__":

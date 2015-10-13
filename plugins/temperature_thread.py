@@ -3,7 +3,8 @@ import sys
 import time
 import datetime
 import logging
-from threading import Thread, Lock
+from threading import Lock
+from utilities import thread_base
 from utilities import config_utils
 from utilities import graphite_logging
 
@@ -21,14 +22,14 @@ CONFIG_SEC_NAME = "temperature_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class Temperature_Thread(Thread):
+class Temperature_Thread(thread_base.AS_Thread):
     def __init__(self, object_group, config):
-        Thread.__init__(self, name=CONFIG_SEC_NAME)
+        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        
         self.og = object_group
-        self.initialized = False
+        
         self.mutex = Lock()
-        self.run_lock = Lock()
-        self.running = False
+        
         self.current_temps = {}
         
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
@@ -52,7 +53,12 @@ class Temperature_Thread(Thread):
         if not os.path.exists(self.temp_data_directory):
             os.makedirs(self.temp_data_directory)
         
-        self.initialized = True
+        self._initialized = True
+        
+        self.setup_data_file()
+        
+        self.last_day = time.localtime().tm_mday
+        
     
     @staticmethod
     def get_template_config(config):
@@ -61,27 +67,24 @@ class Temperature_Thread(Thread):
         config.set(CONFIG_SEC_NAME,"temp_data_dir", "%(data_directory)s/temperature_data")
         config.set(CONFIG_SEC_NAME, "data_file", "%(temp_data_dir)s/today.csv")
     
-    def isInitialized(self):
-        return self.initialized
-    
     def getDeviceNames(self):
-        if not self.initialized:
-            logger.warning( "Warning: getDeviceNames called before initialized" )
+        if not self._initialized:
+            logger.warning( "Warning: getDeviceNames called before _initialized" )
             return []
         
         return self.device_names
     
     def getPrettyDeviceNames(self):
-        if not self.initialized:
-            logger.warning( "Warning: getPrettyDeviceNames called before initialized" )
+        if not self._initialized:
+            logger.warning( "Warning: getPrettyDeviceNames called before _initialized" )
             return []
         
         return self.og.spark.getPrettyDeviceNames(postfix="_floor_temp")
     
     
     def setup_data_file(self):
-        if not self.initialized:
-            logger.warning( "Warning: Temperature_Thread: setup_data_file called before initialized." )
+        if not self._initialized:
+            logger.warning( "Warning: Temperature_Thread: setup_data_file called before _initialized." )
             return
         
         today = datetime.date.today().strftime('temperatures_%Y_%m_%d.csv')
@@ -110,72 +113,51 @@ class Temperature_Thread(Thread):
             return
         
     
-    def run(self):
-        
-        logger.info( "Thread started" )
-        
-        if not self.initialized:
-            logger.warning( "Warning: Temperature_Thread started before initialized, not running." )
-            return
-        
-        self.setup_data_file()
-        
-        last_day = time.localtime().tm_mday
-        
-        self.running = self.run_lock.acquire()
-        while self.running:
-              
-            logger.info( "Thread executing" )
-        
-            t = {}
-            x = 0.0
-            count = 0
-            for device in self.device_names:
-              
-                t[device] = self.og.spark.getVariable(device, "temperature")
-              
-                try:
-                    x = x + float(t[device])
-                    self.current_temps[device] = float(t[device])
-                    count = count + 1
-                    graphite_logging.send_data(logger.name+"."+device, self.current_temps[device])
-                except (KeyboardInterrupt, SystemExit):
-                    raise
-                except:
-                    logger.error( "Error getting temperature ("+device+") setting to null" )
-                    t[device] = "null"
-                    self.current_temps[device] = None
+    def private_run(self):
+        logger.info( "Thread executing" )
+    
+        t = {}
+        x = 0.0
+        count = 0
+        for device in self.device_names:
           
-            if count > 0:
-                self.current_average_temperature = x / count
-            
-            # Check if file needs to be changed
-            self.mutex.acquire()
-            now = time.time()
-            if time.localtime(now).tm_mday != last_day:
-                last_day = time.localtime(now).tm_mday
-                self.setup_data_file()
-            
-            # Write to the file
-            self.file_handle.write(str(now))
-            for device in self.device_names:
-                self.file_handle.write("," + t[device])
-            self.file_handle.write("\n")
-            self.file_handle.flush()
-            self.mutex.release()
-            
-            for _ in range(120):
-                if self.running:
-                    time.sleep(1)
+            t[device] = self.og.spark.getVariable(device, "temperature")
+          
+            try:
+                x = x + float(t[device])
+                self.current_temps[device] = float(t[device])
+                count = count + 1
+                graphite_logging.send_data(logger.name+"."+device, self.current_temps[device])
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except:
+                logger.error( "Error getting temperature ("+device+") setting to null" )
+                t[device] = "null"
+                self.current_temps[device] = None
+      
+        if count > 0:
+            self.current_average_temperature = x / count
         
-        self.run_lock.release()
+        # Check if file needs to be changed
+        self.mutex.acquire()
+        now = time.time()
+        if time.localtime(now).tm_mday != self.last_day:
+            self.last_day = time.localtime(now).tm_mday
+            self.setup_data_file()
         
-        logger.info( "Thread stopped" )
-        
+        # Write to the file
+        self.file_handle.write(str(now))
+        for device in self.device_names:
+            self.file_handle.write("," + t[device])
+        self.file_handle.write("\n")
+        self.file_handle.flush()
+        self.mutex.release()
+    
+        for _ in range(120):
+            if self._running:
+                time.sleep(1)
   
-    def stop(self):
-        self.running = False
-        self.run_lock.acquire() # Wait for the thread to stop
+    def private_run_cleanup(self):
         self.file_handle.close()
     
     def get_average_temp(self):

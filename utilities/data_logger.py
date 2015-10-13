@@ -10,7 +10,7 @@ logger = logging.getLogger('allspark.data_logger')
 
 class Data_Logger():
     def __init__(self, log_directory, filename, archive_prefix, data_item_names):
-        self.initialized = False
+        self._initialized = False
         self.mutex = Lock()
         self.archive_prefix = archive_prefix
         self.filename = filename
@@ -23,16 +23,16 @@ class Data_Logger():
         
         self.last_day = time.localtime().tm_mday
         
-        self.initialized = True
+        self._initialized = True
         
         self.setup_data_file()
     
     def isInitialized(self):
-        return self.initialized
+        return self._initialized
     
     def setup_data_file(self):
-        if not self.initialized:
-            logger.error( "setup_data_file called before initialized." )
+        if not self._initialized:
+            logger.error( "setup_data_file called before _initialized." )
             return
         
         today = datetime.date.today().strftime( self.archive_prefix + '_%Y_%m_%d.csv' )
@@ -63,8 +63,8 @@ class Data_Logger():
     
     def add_data(self, data): # data should be an array of strings
         
-        if not self.initialized:
-            logger.error( "add_data called before initialized." )
+        if not self._initialized:
+            logger.error( "add_data called before _initialized." )
             return
         
         self.mutex.acquire()

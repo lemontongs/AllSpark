@@ -9,7 +9,7 @@ logger = logging.getLogger('allspark.'+CONFIG_SEC_NAME)
 
 class Twilio_Interface():
     def __init__(self, config):
-        self.initialized = False
+        self._initialized = False
         
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
@@ -28,13 +28,13 @@ class Twilio_Interface():
         
         self.client = TwilioRestClient(sid, auth)
         
-        self.initialized = True
+        self._initialized = True
     
     def isInitialized(self):
-        return self.initialized
+        return self._initialized
     
     def sendSMS(self, msg, number):
-        if self.initialized:
+        if self._initialized:
             self.client.messages.create(body=msg, to=number, from_=self.number)
 
 if __name__ == "__main__":

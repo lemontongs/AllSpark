@@ -12,7 +12,7 @@ logger = logging.getLogger('allspark.spark_interface')
 class Spark_Interface():
     def __init__(self, object_group, auth_filename = "spark_auth.txt"):
         self.og = object_group
-        self.initialized = False
+        self._initialized = False
         self.mutex = Lock()
         
         if not os.access(auth_filename, os.R_OK):
@@ -74,20 +74,20 @@ class Spark_Interface():
         for device in [ n[0] for n in self.devices ]:
             logger.info( "Found particle device:" + device )
         
-        self.initialized = True
+        self._initialized = True
     
     def isInitialized(self):
-        return self.initialized
+        return self._initialized
         
     def getDeviceNames(self, postfix=None):
-        if self.initialized:
+        if self._initialized:
             if postfix == None:
                 return [ n[0] for n in self.devices ]
             else:
                 return [ n[0] for n in self.devices if n[0].endswith(postfix) ]
         
     def getPrettyDeviceNames(self, postfix=None):
-        if self.initialized:
+        if self._initialized:
             devs = self.getDeviceNames(postfix=postfix);
             if postfix == None:
                 return devs
@@ -95,7 +95,7 @@ class Spark_Interface():
                 return [ n[0].replace(postfix,'') for n in devs ]
     
     def getVariable(self, deviceName, variable):
-        if self.initialized:
+        if self._initialized:
         
             if deviceName not in [ n[0] for n in self.devices ]:
                 logger.warning( "Error: requested device name ("+deviceName+") not found" )

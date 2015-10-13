@@ -18,8 +18,8 @@ CONFIG_SEC_NAME = "general"
 
 class Object_Group():
     def __init__(self, config):
-        self.initialized = False
-        self.running = False
+        self._initialized = False
+        self._running = False
         
         ############################################################################
         # Spark Interface
@@ -121,29 +121,29 @@ class Object_Group():
         ############################################################################
         self.broadcast = message_broadcast.Message_Broadcast()
 
-        self.initialized = True
+        self._initialized = True
         
         
     def start(self):
-        if self.initialized and not self.running:
+        if self._initialized and not self._running:
             self.thermostat.start()
             self.user_thread.start()
             self.mem.start()
             self.furnace_ctrl.start()
             self.comms.start()
             self.security.start()
-            self.running = True
+            self._running = True
 
 
     def stop(self):
-        if self.initialized and self.running:
+        if self._initialized and self._running:
             self.thermostat.stop()
             self.user_thread.stop()
             self.mem.stop()
             self.furnace_ctrl.stop()
             self.comms.stop()
             self.security.stop()
-            self.running = False
+            self._running = False
 
     def get_javascript(self):
         return self.thermostat.get_javascript()   + \

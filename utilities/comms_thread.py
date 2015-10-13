@@ -12,8 +12,8 @@ logger = logging.getLogger('allspark.comms_thread')
 class Comms_Thread(Thread):
     def __init__(self, port):
         Thread.__init__(self, name="comms_thread")
-        self.initialized = False
-        self.run_lock = Lock()
+        self._initialized = False
+        self._run_lock = Lock()
         self.port = port
         
         try:
@@ -25,14 +25,14 @@ class Comms_Thread(Thread):
             return
         
         self.callbacks = {}
-        self.running = False
-        self.initialized = True
+        self._running = False
+        self._initialized = True
 
     def isInitialized(self):
-        return self.initialized
+        return self._initialized
 
     def stop(self):
-        if self.initialized and self.running:
+        if self._initialized and self._running:
             
             # Send a quit message to close the thread
             context = zmq.Context()
@@ -40,9 +40,9 @@ class Comms_Thread(Thread):
             sock.connect("tcp://localhost:" + str(self.port))
             sock.send("quit")
              
-            self.initialized = False
-            self.running = False
-            self.run_lock.acquire()
+            self._initialized = False
+            self._running = False
+            self._run_lock.acquire()
 
     def register_callback(self, topic, func):
         if topic not in self.callbacks:
@@ -54,14 +54,14 @@ class Comms_Thread(Thread):
         
         logger.info( "Thread started" )
         
-        if not self.initialized:
-            logger.error( "Started before initialized, not running" )
+        if not self._initialized:
+            logger.error( "Started before _initialized, not _running" )
             return
         
         f = open("logs/comms_log","a")
 
-        self.running = self.run_lock.acquire()
-        while self.running:
+        self._running = self._run_lock.acquire()
+        while self._running:
             
             msg = self.socket.recv()
             
@@ -91,7 +91,7 @@ class Comms_Thread(Thread):
         
         logger.info( "Thread stopped" )
         
-        self.run_lock.release()
+        self._run_lock.release()
 
 #
 # MAIN

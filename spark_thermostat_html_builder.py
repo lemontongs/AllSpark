@@ -156,7 +156,7 @@ logging.getLogger('allspark').info("System Started!")
 ############################################################################
 og = object_group.Object_Group(config)
 
-if not og.initialized:
+if not og._initialized:
     logging.error("Error creating threads")
     sys.exit(1)
 

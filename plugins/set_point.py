@@ -12,7 +12,7 @@ logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 class Set_Point():
     def __init__(self, object_group, config):
         self.og = object_group
-        self.initialized = False
+        self._initialized = False
         self.set_point_lock = Lock()
 
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
@@ -30,7 +30,7 @@ class Set_Point():
         # Load and verify the set point file.
         self.load_set_point_file()
         
-        self.initialized = True
+        self._initialized = True
     
     @staticmethod
     def get_template_config(config):
@@ -106,7 +106,7 @@ class Set_Point():
     
     # Get the set point, this can be different if the user is not home
     def get_set_point(self, zone_name):
-        if self.initialized:
+        if self._initialized:
             
             self.set_point_lock.acquire()
             
@@ -157,7 +157,7 @@ class Set_Point():
         self.set_point_lock.release()
 
     def isInitialized(self):
-        return self.initialized
+        return self._initialized
     
     def get_html(self):
         html = '<div id="thermostats" class="jumbotron">'
