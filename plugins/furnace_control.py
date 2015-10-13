@@ -70,7 +70,7 @@ class Furnace_Control(thread_base.AS_Thread):
         config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_3>", "<pin for zone 3>")
         
     def private_run_cleanup(self):
-        if self.isInitialized() and self.isRunning():
+        if self.isInitialized():
             for zone in self.zones:
                 self.off(self.pins[zone])
             self.furnace_controller.stop()
@@ -104,7 +104,7 @@ class Furnace_Control(thread_base.AS_Thread):
                     s = "cooling"
                     self.off(pin)
                 
-                logger.info("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s+"\n")
+                logger.info("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s)
                 
             self.data_logger.add_data( zones_that_are_heating )
             
@@ -158,11 +158,19 @@ class Furnace_Control(thread_base.AS_Thread):
 # MAIN
 #
 if __name__ == "__main__":
+    import ConfigParser
+    
+    logging.getLogger('').handlers = []
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    format_str = '%(asctime)s %(name)-30s %(levelname)-8s %(message)s'
+    console.setFormatter(logging.Formatter(format_str))
+    logger.addHandler(console)
     
     #TODO: fix this!
     temp = 80.0
     modifier = 1.0
-        
+    
     def get_temp():
         global temp, modifier
         if temp > 80 or temp < 70:
@@ -170,23 +178,52 @@ if __name__ == "__main__":
         temp = temp + modifier
         return temp
     
-    zones = [ {'name':'top',     'pin':3, 'get_temp':get_temp},
-              {'name':'main',    'pin':4, 'get_temp':get_temp},
-              {'name':'basement','pin':5, 'get_temp':get_temp} ]
-
-    fc = Furnace_Control(zones)
+    config = ConfigParser.ConfigParser()
+    config.add_section(CONFIG_SEC_NAME)
+    config.set(CONFIG_SEC_NAME, "data_file",      "test_data/today.csv")
+    config.set(CONFIG_SEC_NAME, "data_directory", "test_data")
+    config.set(CONFIG_SEC_NAME, "address",        "225.1.1.2")
+    config.set(CONFIG_SEC_NAME, "port",           "5300")
+    config.set(CONFIG_SEC_NAME, "top_floor_temp",     "3")
+    config.set(CONFIG_SEC_NAME, "main_floor_temp",    "4")
+    config.set(CONFIG_SEC_NAME, "basement_floor_temp","5")
     
-    fc.on(zones[0]['pin'])
+    class subclass():
+        def getDeviceNames(self):
+            return ["top_floor_temp", "main_floor_temp", "basement_floor_temp"]
+        def get_current_device_temp(self, zone):
+            global temp, modifier
+            if temp > 80 or temp < 70:
+                modifier = -modifier
+            temp = temp + modifier
+            print temp
+            return temp
+        def get_set_point(self, zone):
+            return 75
+    class OG():
+        def __init__(self):
+            self.thermostat = subclass()
+            self.set_point  = self.thermostat
     
-    time.sleep(2)
-
-    fc.off(zones[0]['pin'])
+    og = OG()
     
-    fc.set_point(zones[0]['name'], 75.0)
+    fc = Furnace_Control(og, config)
+    
+    fc.on("3")
+    time.sleep(1)
+    fc.off("3")
+    time.sleep(1)
+    fc.on("3")
+    fc.on("4")
+    fc.on("5")
+    time.sleep(1)
     
     fc.start()
-
-    time.sleep(20)
+    time.sleep(10)
     
+    fc.on("3")
+    fc.on("4")
+    fc.on("5")
+    time.sleep(1)
     fc.stop()
 

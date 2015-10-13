@@ -81,7 +81,7 @@ class Security_Thread(thread_base.AS_Thread):
         self.data_logger = data_logger.Data_Logger( data_directory, data_file, "security", zone_names ) 
         
         # Setup UDP interface
-        self.udp = udp_interface.UDP_Socket( address, port, CONFIG_SEC_NAME+"_interface" )
+        self.udp = udp_interface.UDP_Socket( address, port, CONFIG_SEC_NAME+"_inf" )
         if not self.udp.isInitialized():
             return
         self.udp.start()
