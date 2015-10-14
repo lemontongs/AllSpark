@@ -15,6 +15,37 @@ CONFIG_SEC_NAME = "security_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
+class Security_State():
+    
+    _NORMAL = 1
+    _TRIGGERED = 2
+    _state = _NORMAL
+    _trigger_time = time.time()
+    triggered_zones = []
+    
+    def __init__(self, delay = 30): # number of seconds to wait before alarming
+        self.delay = delay
+    
+    def clear(self):
+        self._state = self._NORMAL
+        
+    def trigger(self, zone):
+        if self._state == self._NORMAL:
+            self._state = self._TRIGGERED
+            self._trigger_time = time.time()
+            
+            if zone not in self.triggered_zones:
+                self.triggered_zones.append(zone)
+        
+    def should_alarm(self):
+        if self._state == self._TRIGGERED:
+            if self._trigger_time - time.time() > self.delay:
+                return True
+        
+        return False
+
+
+
 class Security_Thread(thread_base.AS_Thread):
     def __init__(self, object_group, config):
         thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
@@ -85,6 +116,8 @@ class Security_Thread(thread_base.AS_Thread):
         if not self.udp.isInitialized():
             return
         self.udp.start()
+        
+        self.security_state = Security_State()
         
         self.sensor_states = ""
         self._initialized = True
@@ -169,7 +202,27 @@ class Security_Thread(thread_base.AS_Thread):
         logger.info( "Waiting for message" )
         
         msg = self.udp.get( timeout = self.collect_period )
+        
+        #
+        # Clear the security state
+        #
+        if self.og.user_thread.someone_is_present():
+            self.security_state.clear()
+        
+        #
+        # Check to see if we should sound the alarm!!!
+        #
+        if self.security_state.should_alarm():
+            status = "\nSECURITY BREACH!"
+            for zone in self.security_state.triggered_zones:
+                status += "\n" + zone
+            
+            logger.info( status )
+            self.og.twilio.sendSMS( status, self.breach_number )
     
+        #
+        # Process the message
+        #
         if msg != None:
             
             # ( ( ip_address, port ), message )
@@ -201,9 +254,9 @@ class Security_Thread(thread_base.AS_Thread):
                         
                         # If nobody is home and something has changed, trigger a warning
                         if not self.og.user_thread.someone_is_present():
-                            logger.info( "SECURITY BREACH! " + self.zones[zone]['name'] )
-                            self.og.twilio.sendSMS("SECURITY BREACH! "+self.zones[zone]['name'], self.breach_number)
-        
+                            logger.debug( "Triggered (zone = %s)" % self.zones[zone]['name'] )
+                            self.security_state.trigger( self.zones[zone]['name'] )
+                        
                     # <tr class="success">
                     #     <td>Zone 1</td>
                     #     <td>Open</td>

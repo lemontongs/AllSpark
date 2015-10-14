@@ -2,7 +2,6 @@ import csv
 import subprocess
 import time
 import datetime
-import os
 import logging
 from threading import Lock
 from utilities import thread_base
