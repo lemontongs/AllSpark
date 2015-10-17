@@ -94,7 +94,7 @@ class User_Thread(thread_base.AS_Thread):
             
             # Fire off a message when a user arrives home
             if not was_home and self.users[user]['is_home']:
-                self.og.broadcast.send( user+" has arrived at home" )
+                self.og.broadcast.send( "user:"+user+" has arrived at home" )
         
         #
         # Write the collected data to file

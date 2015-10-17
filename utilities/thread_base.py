@@ -13,6 +13,7 @@ class AS_Thread(Thread):
         self._initialized = False
         self._running     = False
         self.logger       = logging.getLogger('allspark.' + config_sec_name)
+        self.daemon       = True # thread dies with program
         
     def isInitialized(self):
         return self._initialized

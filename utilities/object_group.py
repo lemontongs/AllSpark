@@ -5,6 +5,7 @@ from plugins import memory_thread
 from plugins import furnace_control
 from plugins import security_thread
 from plugins import set_point
+from plugins import energy_thread
 import comms_thread
 import spark_interface
 import twilio_interface
@@ -120,7 +121,16 @@ class Object_Group():
         # UDP Multicast
         ############################################################################
         self.broadcast = message_broadcast.Message_Broadcast()
+        
+        ############################################################################
+        # Energy Thread
+        ############################################################################
+        self.energy = energy_thread.Energy_Thread(self, config = config)
 
+        if not self.energy.isInitialized():
+            logger.error( "Failed to create energy monitor" )
+            return
+        
         self._initialized = True
         
         
@@ -132,6 +142,7 @@ class Object_Group():
             self.furnace_ctrl.start()
             self.comms.start()
             self.security.start()
+            self.energy.start()
             self._running = True
 
 
@@ -143,6 +154,7 @@ class Object_Group():
             self.furnace_ctrl.stop()
             self.comms.stop()
             self.security.stop()
+            self.energy.stop()
             self._running = False
 
     def get_javascript(self):
@@ -151,10 +163,12 @@ class Object_Group():
                self.user_thread.get_javascript()  + \
                self.security.get_javascript()     + \
                self.furnace_ctrl.get_javascript() + \
-               self.set_point.get_javascript()
+               self.set_point.get_javascript()    + \
+               self.energy.get_javascript()
         
     def get_html(self):
         return self.thermostat.get_html()   + \
+               self.energy.get_html()       + \
                self.furnace_ctrl.get_html() + \
                self.set_point.get_html()    + \
                self.user_thread.get_html()  + \
@@ -163,12 +177,14 @@ class Object_Group():
         
     @staticmethod
     def get_template_config(config):
-        temperature_thread.Temperature_Thread.get_template_config(config)
-        furnace_control.Furnace_Control.get_template_config(config)
-        set_point.Set_Point.get_template_config(config)
-        security_thread.Security_Thread.get_template_config(config)
-        user_thread.User_Thread.get_template_config(config)
-        memory_thread.Memory_Thread.get_template_config(config)
+        config = temperature_thread.Temperature_Thread.get_template_config(config)
+        config = furnace_control.Furnace_Control.get_template_config(config)
+        config = set_point.Set_Point.get_template_config(config)
+        config = security_thread.Security_Thread.get_template_config(config)
+        config = user_thread.User_Thread.get_template_config(config)
+        config = memory_thread.Memory_Thread.get_template_config(config)
+        config = energy_thread.Energy_Thread.get_template_config(config)
+        return config
         
         
         
