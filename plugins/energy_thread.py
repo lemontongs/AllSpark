@@ -31,7 +31,7 @@ class Energy_Thread(thread_base.AS_Thread):
             return
 
         rtl_exe = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_tcp_exe")
-        if rtl_exe == None:
+        if rtl_exe == None or not os.path.isfile(rtl_exe):
             return
 
         rtl_ppm = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_ppm")
@@ -40,7 +40,7 @@ class Energy_Thread(thread_base.AS_Thread):
             rtl_ppm_args = " -freqcorrection="+rtl_ppm
         
         amr_exe = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_amr_exe")
-        if amr_exe == None:
+        if amr_exe == None or not os.path.isfile(amr_exe):
             return
 
         self.meter_serial_number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "meter_serial_number")

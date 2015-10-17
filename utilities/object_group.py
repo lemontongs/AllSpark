@@ -129,7 +129,6 @@ class Object_Group():
 
         if not self.energy.isInitialized():
             logger.error( "Failed to create energy monitor" )
-            return
         
         self._initialized = True
         
