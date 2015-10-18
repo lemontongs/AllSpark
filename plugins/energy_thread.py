@@ -13,7 +13,7 @@ from utilities import config_utils
 from utilities import thread_base
 
 ON_POSIX = 'posix' in sys.builtin_module_names
-AMR_ARGS = " -msgtype=idm -format=json"
+AMR_ARGS = " -msgtype=idm -format=json -decimation=16 "
 
 CONFIG_SEC_NAME = "energy_thread"
 
@@ -47,6 +47,7 @@ class Energy_Thread(thread_base.AS_Thread):
         if self.meter_serial_number == None:
             return
         self.meter_serial_number = int( self.meter_serial_number )
+        filter_args = " -filterid="+str( self.meter_serial_number )
         
         self.todays_starting_consumption = None
         self.total_consumption = 0.0
@@ -67,7 +68,7 @@ class Energy_Thread(thread_base.AS_Thread):
         time.sleep(5)
         
         # start rtlamr with a thread that fills the queue with each line of output
-        self.amr_handle = subprocess.Popen(shlex.split(amr_exe + AMR_ARGS + rtl_ppm_args), 
+        self.amr_handle = subprocess.Popen(shlex.split(amr_exe + AMR_ARGS + rtl_ppm_args + filter_args), 
                                            stdout=subprocess.PIPE, 
                                            stderr=subprocess.STDOUT, 
                                            bufsize=1, 

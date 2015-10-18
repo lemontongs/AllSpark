@@ -23,6 +23,7 @@ class AS_Thread(Thread):
             
     def stop(self):
         if self.isInitialized() and self.isRunning():
+            self.logger.info( "Stopping thread" )
             self._running = False    # Signal thread to stop
             self._run_lock.acquire() # Wait for thread to stop
     
