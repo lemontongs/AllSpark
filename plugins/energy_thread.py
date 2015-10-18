@@ -95,55 +95,55 @@ class Energy_Thread(thread_base.AS_Thread):
     
     
     def private_run(self):
-        
-        if self.rtl_handle.returncode != None:
-            logger.warning( "RTL_TCP exited with code: " + str(self.rtl_handle.returncode) )
-            self._running = False
-            return
-            
-        if self.amr_handle.returncode != None:
-            logger.warning( "RTL_AMR exited with code: " + str(self.amr_handle.returncode) )
-            self._running = False
-            return
-        
-        # read line with timeout
-        try: 
-            line = self.packets.get(timeout=0.1)
-        except Queue.Empty:
-            pass
-        else: # got line
-            try:
-                packet = json.loads(line)
+        if self.isInitialized():
+            if self.rtl_handle.returncode != None:
+                logger.warning( "RTL_TCP exited with code: " + str(self.rtl_handle.returncode) )
+                self._running = False
+                return
                 
-                if 'Message'              in packet            and \
-                   'ERTSerialNumber'      in packet['Message'] and \
-                   'LastConsumptionCount' in packet['Message']:
-                     
-                    serial = packet['Message']['ERTSerialNumber']
-                    consumption = float( int( packet['Message']['LastConsumptionCount'] ) / 100.0 ) # Convert to kWh
+            if self.amr_handle.returncode != None:
+                logger.warning( "RTL_AMR exited with code: " + str(self.amr_handle.returncode) )
+                self._running = False
+                return
+            
+            # read line with timeout
+            try: 
+                line = self.packets.get(timeout=0.1)
+            except Queue.Empty:
+                pass
+            else: # got line
+                try:
+                    packet = json.loads(line)
                     
-                    # Check for a match
-                    if serial == self.meter_serial_number:
+                    if 'Message'              in packet            and \
+                       'ERTSerialNumber'      in packet['Message'] and \
+                       'LastConsumptionCount' in packet['Message']:
+                         
+                        serial = packet['Message']['ERTSerialNumber']
+                        consumption = float( int( packet['Message']['LastConsumptionCount'] ) / 100.0 ) # Convert to kWh
                         
-                        if self.todays_starting_consumption == None:
-                            self.todays_starting_consumption = consumption
-                        
-                        self.total_consumption = consumption
-                        
-                        self.todays_consumption = self.total_consumption - self.todays_starting_consumption
-                        
-                        # New day transition
-                        now = time.time()
-                        if time.localtime(now).tm_mday != self.last_day:
-                            self.yesterdays_consumption = self.todays_consumption
-                            self.todays_consumption = 0
-                            self.todays_starting_consumption = consumption
+                        # Check for a match
+                        if serial == self.meter_serial_number:
                             
-                        logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.get_total_consumption(),
-                                                                              self.get_todays_consumption(),
-                                                                              self.get_yesterdays_consumption() ) )
-            except ValueError:
-                logger.debug( "Error parsing json" )
+                            if self.todays_starting_consumption == None:
+                                self.todays_starting_consumption = consumption
+                            
+                            self.total_consumption = consumption
+                            
+                            self.todays_consumption = self.total_consumption - self.todays_starting_consumption
+                            
+                            # New day transition
+                            now = time.time()
+                            if time.localtime(now).tm_mday != self.last_day:
+                                self.yesterdays_consumption = self.todays_consumption
+                                self.todays_consumption = 0
+                                self.todays_starting_consumption = consumption
+                                
+                            logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.get_total_consumption(),
+                                                                                  self.get_todays_consumption(),
+                                                                                  self.get_yesterdays_consumption() ) )
+                except ValueError:
+                    logger.debug( "Error parsing json" )
 
 
     def get_total_consumption(self):
@@ -155,15 +155,16 @@ class Energy_Thread(thread_base.AS_Thread):
     def get_yesterdays_consumption(self):
         return self.yesterdays_consumption
 
-    def private_run_cleanup(self):        
+    def private_run_cleanup(self):  
+        if self.isInitialized():      
             
-        if self.rtl_handle.returncode == None:
-            logger.info( "killing: " + str(self.amr_handle.pid) )
-            os.kill(self.amr_handle.pid, signal.SIGKILL)
-            
-        if self.amr_handle.returncode == None:
-            logger.info( "killing: " + str(self.rtl_handle.pid) )
-            os.kill(self.rtl_handle.pid, signal.SIGKILL)
+            if self.rtl_handle.returncode == None:
+                logger.info( "killing: " + str(self.amr_handle.pid) )
+                os.kill(self.amr_handle.pid, signal.SIGKILL)
+                
+            if self.amr_handle.returncode == None:
+                logger.info( "killing: " + str(self.rtl_handle.pid) )
+                os.kill(self.rtl_handle.pid, signal.SIGKILL)
     
         
     @staticmethod
@@ -175,27 +176,29 @@ class Energy_Thread(thread_base.AS_Thread):
         config.set(CONFIG_SEC_NAME,"meter_serial_number", "5555555555")
         
     def get_html(self):
-        html = """
-            <div id="energy" class="jumbotron">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h2>Energy:</h2>
-                        <p>Yesterday: %s kWh</p>
-                        <p>Today: %s kWh</p>
-                        <p>Total: %s kWh</p>
+        if self.isInitialized():
+            html = """
+                <div id="energy" class="jumbotron">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h2>Energy:</h2>
+                            <p>Yesterday: %s kWh</p>
+                            <p>Today: %s kWh</p>
+                            <p>Total: %s kWh</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div id="security_chart_div"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div id="security_chart_div"></div>
-                    </div>
-                </div>
-            </div>
-        """ % ( self.get_yesterdays_consumption(), 
-                self.get_todays_consumption(), 
-                self.get_total_consumption() )
+            """ % ( self.get_yesterdays_consumption(), 
+                    self.get_todays_consumption(), 
+                    self.get_total_consumption() )
         
-        return html
+            return html
+        return ""
     
     def get_javascript(self):
         return ""
