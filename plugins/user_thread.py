@@ -114,8 +114,6 @@ class User_Thread(thread_base.AS_Thread):
         for _ in range(10):
             if self._running:
                 time.sleep(1)
-                        
-        logger.info( "Thread stopped" )
         
     def private_run_cleanup(self):
         self.file_handle.close()

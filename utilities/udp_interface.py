@@ -62,7 +62,6 @@ class UDP_Socket(AS_Thread):
     
     def private_run(self):
         # Wait for data
-        logger.info( "Waiting for message" )
         ready = select.select([self.sock], [], [], 1) # 1 second timeout
     
         if ready[0]:
