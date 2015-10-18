@@ -190,7 +190,7 @@ class Energy_Thread(thread_base.AS_Thread):
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <div id="security_chart_div"></div>
+                            <div id="energy_chart_div"></div>
                         </div>
                     </div>
                 </div>
