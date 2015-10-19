@@ -76,9 +76,13 @@ class Energy_Thread(thread_base.AS_Thread):
                                            bufsize=1, 
                                            close_fds=ON_POSIX)
         
+        
         def enqueue_output(out, queue):
+            f = open("logs/rtlamr.log",'w')
             for line in iter(out.readline, b''):
                 queue.put(line.rstrip())
+                f.write(line)
+            f.close()
         
         self.output_thread = Thread( target = enqueue_output, args = (self.amr_handle.stdout, self.packets) )
         self.output_thread.daemon = True # thread dies with the program
