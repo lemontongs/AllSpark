@@ -142,7 +142,7 @@ logging.basicConfig(level=logging._levelNames[log_level],
 
 # define a Handler which writes INFO messages or higher to the sys.stderr
 console = logging.StreamHandler()
-console.setLevel(logging.INFO)
+console.setLevel(logging._levelNames[log_level])
 console.setFormatter(logging.Formatter(format_str))
 
 # add the handler to the logger

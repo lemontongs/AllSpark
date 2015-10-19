@@ -59,6 +59,7 @@ class Energy_Thread(thread_base.AS_Thread):
         #
         # start rtl_tcp
         #
+        logger.debug( "RTL_TCP commmand: " + rtl_exe )
         self.rtl_handle = subprocess.Popen(shlex.split(rtl_exe), 
                                            stdout=subprocess.PIPE, 
                                            stderr=subprocess.STDOUT, 
@@ -68,6 +69,7 @@ class Energy_Thread(thread_base.AS_Thread):
         time.sleep(5)
         
         # start rtlamr with a thread that fills the queue with each line of output
+        logger.debug( "RTL_AMR commmand: " + amr_exe + AMR_ARGS + rtl_ppm_args + filter_args )
         self.amr_handle = subprocess.Popen(shlex.split(amr_exe + AMR_ARGS + rtl_ppm_args + filter_args), 
                                            stdout=subprocess.PIPE, 
                                            stderr=subprocess.STDOUT, 
@@ -109,7 +111,7 @@ class Energy_Thread(thread_base.AS_Thread):
             
             # read line with timeout
             try: 
-                line = self.packets.get(timeout=0.1)
+                line = self.packets.get(timeout=1)
             except Queue.Empty:
                 pass
             else: # got line
