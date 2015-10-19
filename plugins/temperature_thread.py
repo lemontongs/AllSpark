@@ -40,7 +40,7 @@ class Temperature_Thread(thread_base.AS_Thread):
             return
 
         self.filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
-        if self.temp_data_directory == None:
+        if self.filename == None:
             return
 
         self.device_names = self.og.spark.getDeviceNames(postfix="_floor_temp")

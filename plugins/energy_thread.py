@@ -114,6 +114,8 @@ class Energy_Thread(thread_base.AS_Thread):
                 pass
             else: # got line
                 try:
+                    logger.debug( "Got line: " + line )
+                    
                     packet = json.loads(line)
                     
                     if 'Message'              in packet            and \
@@ -125,6 +127,8 @@ class Energy_Thread(thread_base.AS_Thread):
                         
                         # Check for a match
                         if serial == self.meter_serial_number:
+                            
+                            logger.debug( "MATCH" )
                             
                             if self.todays_starting_consumption == None:
                                 self.todays_starting_consumption = consumption
@@ -143,6 +147,9 @@ class Energy_Thread(thread_base.AS_Thread):
                             logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.get_total_consumption(),
                                                                                   self.get_todays_consumption(),
                                                                                   self.get_yesterdays_consumption() ) )
+                        else:
+                            logger.debug( "NO MATCH" )
+                        
                 except ValueError:
                     logger.debug( "Error parsing json" )
 
