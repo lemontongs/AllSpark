@@ -13,7 +13,7 @@ from utilities import config_utils
 from utilities import thread_base
 
 ON_POSIX = 'posix' in sys.builtin_module_names
-AMR_ARGS = " -msgtype=idm -format=json -decimation=16 "
+AMR_ARGS = " -msgtype=idm -format=json -decimation=8 "
 
 CONFIG_SEC_NAME = "energy_thread"
 
@@ -158,7 +158,7 @@ class Energy_Thread(thread_base.AS_Thread):
                 except ValueError:
                     logger.debug( "Error parsing json" )
                             
-                for _ in range(5):
+                for _ in range(1):
                     if self._running:
                         time.sleep(1)
 
