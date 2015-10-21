@@ -139,16 +139,15 @@ class Energy_Thread(thread_base.AS_Thread):
                             if self.todays_starting_consumption == None:
                                 self.todays_starting_consumption = consumption
                             
-                            self.total_consumption = consumption
-                            
-                            self.todays_consumption = self.total_consumption - self.todays_starting_consumption
+                            self.total_consumption = float( consumption )
+                            self.todays_consumption = float( consumption ) - self.todays_starting_consumption
                             
                             # New day transition
                             now = time.time()
                             if time.localtime(now).tm_mday != self.last_day:
-                                self.yesterdays_consumption = self.todays_consumption
+                                self.yesterdays_consumption = float( self.todays_consumption )
                                 self.todays_consumption = 0
-                                self.todays_starting_consumption = consumption
+                                self.todays_starting_consumption = float( consumption )
                                 
                             logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.get_total_consumption(),
                                                                                   self.get_todays_consumption(),
@@ -158,7 +157,10 @@ class Energy_Thread(thread_base.AS_Thread):
                         
                 except ValueError:
                     logger.debug( "Error parsing json" )
-
+                            
+                for _ in range(5):
+                    if self._running:
+                        time.sleep(1)
 
     def get_total_consumption(self):
         return self.total_consumption
@@ -196,9 +198,9 @@ class Energy_Thread(thread_base.AS_Thread):
                     <div class="row">
                         <div class="col-md-12">
                             <h2>Energy:</h2>
-                            <p>Yesterday: %s kWh</p>
-                            <p>Today: %s kWh</p>
-                            <p>Total: %s kWh</p>
+                            <p>Yesterday: %.2f kWh</p>
+                            <p>Today: %.2f kWh</p>
+                            <p>Total: %.2f kWh</p>
                         </div>
                     </div>
                     <div class="row">
