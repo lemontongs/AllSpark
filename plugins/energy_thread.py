@@ -1,4 +1,4 @@
-
+import copy
 import os
 import time
 import logging
@@ -129,18 +129,16 @@ class Energy_Thread(thread_base.AS_Thread):
                        'LastConsumptionCount' in packet['Message']:
                          
                         serial = packet['Message']['ERTSerialNumber']
-                        consumption = float( int( packet['Message']['LastConsumptionCount'] ) / 100.0 ) # Convert to kWh
+                        consumption = copy.deepcopy( float( int( packet['Message']['LastConsumptionCount'] ) / 100.0 ) ) # Convert to kWh
                         
                         # Check for a match
                         if serial == self.meter_serial_number:
                             
-                            logger.debug( "MATCH" )
-                            
                             if self.todays_starting_consumption == None:
                                 self.todays_starting_consumption = consumption
                             
-                            self.total_consumption = float( consumption )
-                            self.todays_consumption = float( consumption ) - self.todays_starting_consumption
+                            self.total_consumption = consumption
+                            self.todays_consumption = consumption - self.todays_starting_consumption
                             
                             # New day transition
                             now = time.time()
@@ -149,9 +147,9 @@ class Energy_Thread(thread_base.AS_Thread):
                                 self.todays_consumption = 0
                                 self.todays_starting_consumption = float( consumption )
                                 
-                            logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.get_total_consumption(),
-                                                                                  self.get_todays_consumption(),
-                                                                                  self.get_yesterdays_consumption() ) )
+                            logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.total_consumption,
+                                                                                  self.todays_consumption,
+                                                                                  self.yesterdays_consumption ) )
                         else:
                             logger.debug( "NO MATCH" )
                         
