@@ -7,6 +7,7 @@ from threading import Lock
 from utilities import thread_base
 from utilities import config_utils
 from utilities import graphite_logging
+from utilities.data_logging import value_logger
 
 
 #
@@ -35,12 +36,8 @@ class Temperature_Thread(thread_base.AS_Thread):
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        self.temp_data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "temp_data_dir")
-        if self.temp_data_directory == None:
-            return
-
-        self.filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
-        if self.filename == None:
+        self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        if self.data_directory == None:
             return
 
         self.device_names = self.og.spark.getDeviceNames(postfix="_floor_temp")
@@ -50,14 +47,14 @@ class Temperature_Thread(thread_base.AS_Thread):
         self.current_average_temperature = 0.0
 
         # Create the data directory if it does not exist
-        if not os.path.exists(self.temp_data_directory):
-            os.makedirs(self.temp_data_directory)
+        if not os.path.exists(self.data_directory):
+            os.makedirs(self.data_directory)
+        
+        
+        self.data_logger = value_logger.Value_Logger(self.data_directory, "temperatures", self.device_names)
         
         self._initialized = True
         
-        self.setup_data_file()
-        
-        self.last_day = time.localtime().tm_mday
         
     
     @staticmethod
@@ -82,84 +79,43 @@ class Temperature_Thread(thread_base.AS_Thread):
         return self.og.spark.getPrettyDeviceNames(postfix="_floor_temp")
     
     
-    def setup_data_file(self):
-        if not self._initialized:
-            logger.warning( "Warning: Temperature_Thread: setup_data_file called before _initialized." )
-            return
-        
-        today = datetime.date.today().strftime('temperatures_%Y_%m_%d.csv')
-        todays_filename = self.temp_data_directory + "/" + today
-        
-        # If the file is currently open, close it
-        if hasattr(self, 'file_handle') and not self.file_handle.closed:
-            self.file_handle.close()
-        
-        # If the "today" link exists, delete it
-        if os.path.islink(self.filename):
-            os.unlink(self.filename)
-        
-        # Touch todays data file (does nothing if it already exists)
-        open(todays_filename, 'a').close()
-        
-        # Create the "today" link to todays data file
-        os.symlink(today, self.filename)
-        
-        # Open the link as a data file
-        try:
-            self.file_handle = open(self.filename, 'a+')
-            self.file_handle.seek(0,2)
-        except:
-            logger.warning( "Temperature_Thread: Failed to open", self.filename, ":", sys.exc_info()[1] )
-            return
-        
-    
     def private_run(self):
         logger.info( "Thread executing" )
     
-        t = {}
+        temps = []
         x = 0.0
         count = 0
         for device in self.device_names:
           
-            t[device] = self.og.spark.getVariable(device, "temperature")
+            device_temp = self.og.spark.getVariable(device, "temperature")
           
             try:
-                x = x + float(t[device])
-                self.current_temps[device] = float(t[device])
+                x = x + float(device_temp)
+                self.current_temps[device] = float(device_temp)
                 count = count + 1
                 graphite_logging.send_data(logger.name+"."+device, self.current_temps[device])
+                
             except (KeyboardInterrupt, SystemExit):
                 raise
+            
             except:
                 logger.error( "Error getting temperature ("+device+") setting to null" )
-                t[device] = "null"
+                device_temp = "null"
                 self.current_temps[device] = None
+                
+            finally:
+                temps.append( device_temp )
       
         if count > 0:
             self.current_average_temperature = x / count
         
-        # Check if file needs to be changed
-        self.mutex.acquire()
-        now = time.time()
-        if time.localtime(now).tm_mday != self.last_day:
-            self.last_day = time.localtime(now).tm_mday
-            self.setup_data_file()
+        # Store the data
+        self.data_logger.add_data( temps )
         
-        # Write to the file
-        self.file_handle.write(str(now))
-        for device in self.device_names:
-            self.file_handle.write("," + t[device])
-        self.file_handle.write("\n")
-        self.file_handle.flush()
-        self.mutex.release()
-    
         for _ in range(120):
             if self._running:
                 time.sleep(1)
   
-    def private_run_cleanup(self):
-        self.file_handle.close()
-    
     def get_average_temp(self):
         return self.current_average_temperature
     
@@ -173,79 +129,44 @@ class Temperature_Thread(thread_base.AS_Thread):
         return -1000.0
     
     def get_html(self):
-        html = """
+        html = ""
         
-        <div id="plot" class="jumbotron">
-            <h2>Plot</h2>
-            <p class="lead">Current average temperature: %.1f F</p>          <!-- CURR AVERAGE TEMP -->
-            <div class="row">
-                <div class="col-md-12">
-                    <div id="temp_chart_div" style="height: 500px;"></div>
+        if self.isInitialized():
+            html = """
+            
+            <div id="plot" class="jumbotron">
+                <h2>Plot</h2>
+                <p class="lead">Current average temperature: %.1f F</p>          <!-- CURR AVERAGE TEMP -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div id="temp_chart_div" style="height: 500px;"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        """ % self.get_average_temp()
+    
+            """ % self.get_average_temp()
         
         return html
     
     def get_javascript(self):
-        jscript = """
-          
-            function drawTempData(data)
-            {
-                var rows = data.split("\\n");
-                
-                var result = [['Time' %s ]]; // , 'first', 'second', 'basement'                     //   FLOOR NAMES
-                
-                for ( var i = 0; i < rows.length; i++)
+        jscript = ""
+        
+        if self.isInitialized():
+            jscript = """
+              
+                function drawTempData(data)
                 {
-                    var row = rows[i];
-                    var items = row.split(",");
-                    if (items.length != 4)
-                        continue;
-                    
-                    var time = items[0];
-                    
-                    var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
-                    d.setUTCSeconds(parseInt(time));
-                    
-                    var now = new Date();
-                    var days = (now - d)/(1000*60*60*24);
-                    if (days > 0.5)
-                    {
-                        continue;
-                    }
-                    
-                    var temps = [];
-                    temps.push(d);
-                    for (var t = 1; t < items.length; t++ )
-                    {
-                        temps[t] = parseFloat(items[t]);
-                        if (temps[t] == NaN)
-                        {
-                            temps[t] = null;
-                        }
-                    }
-                    
-                    result.push(temps);
+                    %s
                 }
                 
-                var data = google.visualization.arrayToDataTable(result);
-                var options = { title: 'Zone Temperatures (F)' };//,
-                             //   hAxis: { showTextEvery: Math.floor(data.getNumberOfRows() / 5) } };
-
-                var chart = new google.visualization.LineChart(document.getElementById('temp_chart_div'));
-                chart.draw(data, options);
-            }
+                function drawTempDataOnReady()
+                {
+                    $.get("%s", function (data) { drawTempData(data);  })           //   TEMPERATURE DATA FILENAME
+                }
+                ready_function_array.push( drawTempDataOnReady )
             
-            function drawTempDataOnReady()
-            {
-                $.get("%s", function (data) { drawTempData(data);  })           //   TEMPERATURE DATA FILENAME
-            }
-            ready_function_array.push( drawTempDataOnReady )
-        
-        """ % ( ''.join([ (", '"+d+"'") for d in self.getPrettyDeviceNames() ]), self.filename )
-        
+            """ % ( self.data_logger.get_google_linechart_javascript("Zone Temperatures", "temp_chart_div"), 
+                    self.data_directory + "/today.csv" )
+            
         return jscript
     

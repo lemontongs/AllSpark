@@ -4,7 +4,7 @@ import time
 import logging
 from threading import Lock
 from utilities import udp_interface
-from utilities import data_logger
+from utilities.data_logging import presence_logger
 from utilities import config_utils
 from utilities import thread_base
 
@@ -73,10 +73,6 @@ class Security_Thread(thread_base.AS_Thread):
         if data_directory == None:
             return
 
-        data_file = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
-        if data_directory == None:
-            return
-
         address = config_utils.get_config_param( config, CONFIG_SEC_NAME, "address")
         if address == None:
             return
@@ -109,7 +105,7 @@ class Security_Thread(thread_base.AS_Thread):
             self.collect_period = float(config.get(CONFIG_SEC_NAME, "collect_period", True))
         
         # Setup data data_logger
-        self.data_logger = data_logger.Data_Logger( data_directory, data_file, "security", zone_names ) 
+        self.data_logger = presence_logger.Presence_Logger( data_directory, "security", zone_names ) 
         
         # Setup UDP interface
         self.udp = udp_interface.UDP_Socket( address, port, CONFIG_SEC_NAME+"_inf" )
@@ -127,7 +123,6 @@ class Security_Thread(thread_base.AS_Thread):
         config.add_section(CONFIG_SEC_NAME)
         config.set(CONFIG_SEC_NAME,"temp_data_dir", "data")
         config.set(CONFIG_SEC_NAME,"data_directory", "%(temp_data_dir)s/security_data")
-        config.set(CONFIG_SEC_NAME,"data_file", "%(data_directory)s/today.csv")
         config.set(CONFIG_SEC_NAME,"breach_number", "+15551231234")
         config.set(CONFIG_SEC_NAME,"monitor_device_name", "<particle security device name>")
         config.set(CONFIG_SEC_NAME,"num_zones", "5")
@@ -144,57 +139,51 @@ class Security_Thread(thread_base.AS_Thread):
         return ss
     
     def get_html(self):
-        html = """
-            <div id="security" class="jumbotron">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h2>Security:</h2>
-                        <table class="table table-condensed">
-                            <thead>
-                                <tr>
-                                    <th>Zone</th>
-                                    <th>State</th>
-                                    <th>Last Change</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                %s               <!-- SECURITY STATE -->
-                            </tbody>
-                        </table>
+        html = ""
+        
+        if self.isInitialized():
+            
+            html = """
+                <div id="security" class="jumbotron">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h2>Security:</h2>
+                            <table class="table table-condensed">
+                                <thead>
+                                    <tr>
+                                        <th>Zone</th>
+                                        <th>State</th>
+                                        <th>Last Change</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    %s               <!-- SECURITY STATE -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div id="security_chart_div"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div id="security_chart_div"></div>
-                    </div>
-                </div>
-            </div>
-        """ % self.getSensorStates()
+            """ % self.getSensorStates()
         
         return html
     
     def get_javascript(self):
-        jscript = """
+        jscript = ""
         
-            function drawSecurityData() {
-                var dataTable = new google.visualization.DataTable();
-
-                dataTable.addColumn({ type: 'string', id: 'Zone' });
-                dataTable.addColumn({ type: 'date', id: 'Start' });
-                dataTable.addColumn({ type: 'date', id: 'End' });
-
-                dataTable.addRows([
-                  
-                %s                             //   SECURITY DATA
-
-                ]);
-
-                chart = new google.visualization.Timeline(document.getElementById('security_chart_div'));
-                chart.draw(dataTable, { height: 340 });
-            }
-            ready_function_array.push( drawSecurityData )
-            
-        """ % self.data_logger.get_google_chart_string()
+        if self.isInitialized():
+            jscript = """
+                function drawSecurityData()
+                {
+                    %s
+                }
+                ready_function_array.push( drawSecurityData )
+                
+            """ % self.data_logger.get_google_timeline_javascript("Zone","security_chart_div")
         
         return jscript
     

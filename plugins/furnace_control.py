@@ -1,8 +1,10 @@
 #! /usr/bin/env python
 
+import sys
 import time
 import logging
-from utilities import data_logger
+import traceback
+from utilities.data_logging import presence_logger
 from utilities import config_utils
 from utilities import udp_interface
 from utilities import thread_base
@@ -21,10 +23,6 @@ class Furnace_Control(thread_base.AS_Thread):
         # Get parameters from the config file
 
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
-            return
-
-        self.filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_file")
-        if self.filename == None:
             return
 
         data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
@@ -55,7 +53,7 @@ class Furnace_Control(thread_base.AS_Thread):
             return
         
         # Setup data logger
-        self.data_logger = data_logger.Data_Logger( data_directory, self.filename, "furnace", self.zones ) 
+        self.data_logger = presence_logger.Presence_Logger( data_directory, "furnace", self.zones ) 
         
         self._initialized = True
 
@@ -64,7 +62,6 @@ class Furnace_Control(thread_base.AS_Thread):
         config.add_section(CONFIG_SEC_NAME)
         config.set(CONFIG_SEC_NAME,"temp_data_dir", "data")
         config.set(CONFIG_SEC_NAME,"data_directory", "%(temp_data_dir)s/furnace_data")
-        config.set(CONFIG_SEC_NAME, "data_file", "%(data_directory)s/today.csv")
         config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_1>", "<pin for zone 1>")
         config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_2>", "<pin for zone 2>")
         config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_3>", "<pin for zone 3>")
@@ -86,71 +83,69 @@ class Furnace_Control(thread_base.AS_Thread):
     def private_run(self):
             zones_that_are_heating = []
             
-            for zone in self.zones:
-                
-                temp = self.og.thermostat.get_current_device_temp(zone)
-                pin = self.pins[zone]
-                set_p = self.og.set_point.get_set_point(zone)
-                
-                s = ""
-                if temp == -1000.0:
-                    s = "invalid"
-                    self.off(pin)
-                elif temp < set_p:
-                    s = "heating"
-                    zones_that_are_heating.append( zone )
-                    self.on(pin)
-                elif temp > set_p + 1.0:
-                    s = "cooling"
-                    self.off(pin)
-                
-                logger.info("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s)
-                
-            self.data_logger.add_data( zones_that_are_heating )
+            try:
+                for zone in self.zones:
+                    
+                    temp = self.og.thermostat.get_current_device_temp(zone)
+                    pin = self.pins[zone]
+                    set_p = self.og.set_point.get_set_point(zone)
+                    
+                    s = ""
+                    if temp == -1000.0:
+                        s = "invalid"
+                        self.off(pin)
+                    elif temp < set_p:
+                        s = "heating"
+                        zones_that_are_heating.append( zone )
+                        self.on(pin)
+                    elif temp > set_p + 1.0:
+                        s = "cooling"
+                        self.off(pin)
+                    
+                    logger.info("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s)
+                    
+                self.data_logger.add_data( zones_that_are_heating )
             
+            except Exception as e:
+                tb = "".join( traceback.format_tb(sys.exc_info()[2]) )
+                self.logger.error( "exception occured in " + self.name + " thread: \n" + tb + "\n" + str( e ) ) 
+                
             for _ in range(60):
                 if self.isRunning():
                     time.sleep(1)
         
     
     def get_html(self):
-        html = """
+        html = ""
         
-        <div id="furnace" class="jumbotron">
-            <div class="row">
-                <h2>Furnace State:</h2>
-                <div class="col-md-12">
-                    <div id="furnace_chart_div"></div>
+        if self.isInitialized():
+            html = """
+            
+            <div id="furnace" class="jumbotron">
+                <div class="row">
+                    <h2>Furnace State:</h2>
+                    <div class="col-md-12">
+                        <div id="furnace_chart_div"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        """
+            
+            """
         
         return html
     
     def get_javascript(self):
-        jscript = """
-            function drawFurnaceData()
-            {
-                var dataTable = new google.visualization.DataTable();
-
-                dataTable.addColumn({ type: 'string', id: 'Zone' });
-                dataTable.addColumn({ type: 'date', id: 'Start' });
-                dataTable.addColumn({ type: 'date', id: 'End' });
-
-                dataTable.addRows([
-                  
-                %s             //   FURNACE IS ON DATA
-
-                ]);
-
-                chart = new google.visualization.Timeline(document.getElementById('furnace_chart_div'));
-                chart.draw(dataTable);
-            }
-            ready_function_array.push( drawFurnaceData )
-            
-        """ % self.data_logger.get_google_chart_string()
+        jscript = ""
+        
+        if self.isInitialized():
+            jscript = """
+                function drawFurnaceData()
+                {
+                    %s
+                }
+                ready_function_array.push( drawFurnaceData )
+                
+            """ % self.data_logger.get_google_timeline_javascript("Zone","furnace_chart_div")
         
         return jscript
     
