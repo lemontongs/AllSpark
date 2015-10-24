@@ -11,6 +11,7 @@ import shlex
 from threading import Lock, Thread
 from utilities import config_utils
 from utilities import thread_base
+from utilities.data_logging import value_logger
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 AMR_ARGS = " -msgtype=idm -format=json -decimation=8 "
@@ -28,6 +29,10 @@ class Energy_Thread(thread_base.AS_Thread):
         self.mutex = Lock()
         
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+            return
+
+        self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        if self.data_directory == None:
             return
 
         rtl_exe = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_tcp_exe")
@@ -76,6 +81,7 @@ class Energy_Thread(thread_base.AS_Thread):
                                            bufsize=1, 
                                            close_fds=ON_POSIX)
         
+        self.data_logger = value_logger.Value_Logger(self.data_directory, "energy", "Electricity Used")
         
         def enqueue_output(out, queue):
             f = open("logs/rtlamr.log",'w')
@@ -137,15 +143,19 @@ class Energy_Thread(thread_base.AS_Thread):
                             if self.todays_starting_consumption == None:
                                 self.todays_starting_consumption = consumption
                             
+                            # Save the data
+                            self.data_logger.add_data([str(consumption)])
+                            
                             self.total_consumption = consumption
                             self.todays_consumption = consumption - self.todays_starting_consumption
                             
                             # New day transition
                             now = time.time()
                             if time.localtime(now).tm_mday != self.last_day:
-                                self.yesterdays_consumption = float( self.todays_consumption )
+                                self.last_day = time.localtime(now).tm_yday
+                                self.yesterdays_consumption = self.todays_consumption
                                 self.todays_consumption = 0
-                                self.todays_starting_consumption = float( consumption )
+                                self.todays_starting_consumption = consumption
                                 
                             logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.total_consumption,
                                                                                   self.todays_consumption,
