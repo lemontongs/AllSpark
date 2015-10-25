@@ -157,9 +157,9 @@ class Energy_Thread(thread_base.AS_Thread):
                                 self.todays_consumption = 0
                                 self.todays_starting_consumption = consumption
                                 
-                            logger.info( "Total: %f  Today: %f Yesterday: %f" % ( self.total_consumption,
-                                                                                  self.todays_consumption,
-                                                                                  self.yesterdays_consumption ) )
+                            logger.info( "Total: %.2f  Today: %.2f Yesterday: %.2f" % ( self.total_consumption,
+                                                                                        self.todays_consumption,
+                                                                                        self.yesterdays_consumption ) )
                         else:
                             logger.debug( "NO MATCH" )
                         
@@ -225,6 +225,24 @@ class Energy_Thread(thread_base.AS_Thread):
         return ""
     
     def get_javascript(self):
+        if self.isInitialized():
+            jscript = """
+            function drawEnergyData(data)
+            {
+                %s
+            }
+            
+            function drawEnergyDataOnReady()
+            {
+                $.get("%s", function (data) { drawEnergyData(data);  })
+            }
+            
+            ready_function_array.push( drawEnergyDataOnReady )
+            
+            """ % ( self.data_logger.get_google_linechart_javascript("Energy Usage", "energy_chart_div"),
+                    self.data_directory + "/today.csv" )
+            
+            return jscript
         return ""
         
         
