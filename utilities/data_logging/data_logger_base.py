@@ -1,12 +1,13 @@
 
 import os
-import sys
 import time
 import datetime
 import logging
 from threading import Lock
 
 logger = logging.getLogger('allspark.data_logger')
+
+MAX_DAYS_OF_HISTORY = 7
 
 class Data_Logger():
     def __init__(self, data_directory, archive_prefix):
@@ -24,7 +25,14 @@ class Data_Logger():
         
         self.last_day = time.localtime().tm_mday
         
-        self.data = []
+        #
+        # 2-D array where D1 = days of data and D2 is an array of data items for that day
+        #
+        # data[0][0]  = first item in the oldest day of loaded history (up to MAX_DAYS_OF_HISTORY old)
+        # data[-1][0] = first item in todays data
+        # data[-1][-1] = most recent item in todays data
+        #
+        self.data = self.load_history()
         
         self._initialized = True
         
@@ -42,10 +50,6 @@ class Data_Logger():
         today = datetime.date.today().strftime( self.archive_prefix + '_%Y_%m_%d.csv' )
         todays_filename = self.data_directory + "/" + today
         
-        # If the file is currently open, close it
-        if hasattr(self, 'file_handle') and not self.file_handle.closed:
-            self.file_handle.close()
-        
         # If the "today" link exists, delete it
         if os.path.islink(self.filename):
             os.unlink(self.filename)
@@ -55,34 +59,73 @@ class Data_Logger():
         
         # Create the "today" link to todays data file
         os.symlink(today, self.filename)
+
     
-        # Clear the current data
-        self.data = []
+    def get_data_item(self, dataset = -1, index = -1):
+        if self.isInitialized():
+            try:
+                return self.data[dataset][index]
+            except IndexError:
+                logger.warning( "Asked for an item out of bounds: ["+str(dataset)+"],["+str(index)+"]" )
+                return None
+        return None
+    
+    
+    def get_data_set(self, dataset = -1):
+        if self.isInitialized():
+            try:
+                return self.data[dataset]
+            except IndexError:
+                logger.warning( "Asked for a dataset out of bounds: ["+str(dataset)+"]" )
+                return None
+        return None
+    
+    def num_data_sets(self):
+        if self.isInitialized():
+            return len(self.data)
+        return 0
+    
+    def load_file(self, filepath):
+        data = []
         
-        # Open the link as a data file
-        try:
-            # Open the data file
-            self.file_handle = open(self.filename, 'a+')
-        except:
-            logger.error( "Failed to open "+ self.filename +" : " + repr(sys.exc_info()[1]) )
-            self._initialized = False
-            return
-            
-        # Load the data from file (only happens when a file already existed for today)
-        for line in self.file_handle.readlines():
-            line_data = line.rstrip().split(',')
-            
-            dt = datetime.datetime.fromtimestamp(float(line_data[0]))
-            year   = dt.strftime('%Y')
-            month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
-            day    = dt.strftime('%d')
-            hour   = dt.strftime('%H')
-            minute = dt.strftime('%M')
-            second = dt.strftime('%S')
-            time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
-            
-            self.data.append( {'time_str':time_str, 'data':line_data[1:]} )
+        if os.path.isfile(filepath):
+            f = open(filepath, 'r')
+            for line in f.readlines():
+                line_data = line.rstrip().split(',')
+                
+                dt = datetime.datetime.fromtimestamp(float(line_data[0]))
+                year   = dt.strftime('%Y')
+                month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
+                day    = dt.strftime('%d')
+                hour   = dt.strftime('%H')
+                minute = dt.strftime('%M')
+                second = dt.strftime('%S')
+                time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
+                
+                data.append( {'time_str':time_str, 
+                              'time':float(line_data[0]), 
+                              'data':line_data[1:]} )
+    
+        return data
+    
+    
+    def load_history(self):
+        history = []
         
+        # For each file in the directory (sorted)
+        for filename in sorted( os.listdir(self.data_directory) )[:MAX_DAYS_OF_HISTORY]:
+            
+            filepath = os.path.join( self.data_directory, filename )
+            
+            # Skip links
+            if not os.path.islink(filepath):
+                
+                # Add an array to the data
+                history.append( self.load_file(filepath) )
+        
+        return history
+    
+    
     
     def add_data(self, data): # data should be an array of strings
         
@@ -106,6 +149,7 @@ class Data_Logger():
         if time.localtime(now).tm_mday != self.last_day:
             self.last_day = time.localtime(now).tm_mday
             self.setup_data_file()
+            self.data.append([]) # add a new list to data (TODO: remove any larger than MAX_DAYS_OF_HISTORY)
         
         # Build the data string
         result = str(now)
@@ -113,9 +157,11 @@ class Data_Logger():
             result += "," + item
     
         # Write to the file
-        self.file_handle.write(result)
-        self.file_handle.write("\n")
-        self.file_handle.flush()
+        file_handle = open(self.filename, "a+")
+        file_handle.write(result)
+        file_handle.write("\n")
+        file_handle.flush()
+        file_handle.close()
         
         # Compute the javascript time string (probably not the best place for this)
         dt = datetime.datetime.fromtimestamp(now)
@@ -127,8 +173,21 @@ class Data_Logger():
         second = dt.strftime('%S')
         time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
     
-        #                      time string      string list
-        self.data.append({'time_str':time_str, 'data':data})
+        # Add the data
+        self.data[-1].append({'time_str':time_str, 
+                              'time':now,
+                              'data':data})
         
         self.mutex.release()
+    
+    
+if __name__ == "__main__":
+    from pprint import pprint
+    
+    data_logger = Data_Logger("data/temperature_data", "temperatures")
+    
+    data_logger.add_data(["one","two","three"])
+    
+    pprint( data_logger.load_history() )
+    
     

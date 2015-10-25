@@ -8,8 +8,10 @@ class Presence_Logger(data_logger_base.Data_Logger):
         
     def get_google_timeline_javascript(self, item_name, div_id):
         
-        if len(self.data) == 0:
-            return "[] // None available"
+        # Get the most recent data set (all the data from today)
+        dataset = self.get_data_set()
+        if dataset == None or len( dataset ) == 0:
+            return "// None available"
         
         # Build the return string
         return_string = """
@@ -22,7 +24,7 @@ class Presence_Logger(data_logger_base.Data_Logger):
 
         dataTable.addRows([
           
-        %s             //   FURNACE DATA
+        %s             //   TIMELINE DATA
 
         ]);
 
@@ -35,15 +37,19 @@ class Presence_Logger(data_logger_base.Data_Logger):
         # Save the first state
         start_times = {}
         for item in self.data_item_names:
-            if item in self.data[0]['data']:
-                start_times[item] = self.data[0]['time_str']
+            
+            data = self.get_data_item(index=0)
+            
+            if data and item in data['data']:
+                start_times[item] = data['time_str']
             else:
                 start_times[item] = None
         
         # Go through the data and write out a string whenever the item
         # is no longer present.
         return_string_data = ""
-        for row in self.data:
+        
+        for row in dataset:
             row_time = row['time_str']
             row_data = row['data']
             
@@ -64,7 +70,7 @@ class Presence_Logger(data_logger_base.Data_Logger):
         # Make sure any items currently present get closed properly
         for item in self.data_item_names:
             if start_times[item] != None:
-                return_string_data += ("['%s',  %s, %s],\n" % (item, start_times[item], self.data[-1]["time_str"]))
+                return_string_data += ("['%s',  %s, %s],\n" % (item, start_times[item], dataset[-1]["time_str"]))
                 
         # Remove the trailing comma and return line    
         if len(return_string_data) > 2:

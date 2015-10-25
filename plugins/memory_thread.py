@@ -32,7 +32,7 @@ class Memory_Thread(thread_base.AS_Thread):
         else:
             self.collect_period = float(config.get( CONFIG_SEC_NAME, "collect_period", True ) )
         
-        self.data_logger = value_logger.Value_Logger(self.data_directory, "memory", "Memory Used")
+        self.data_logger = value_logger.Value_Logger(self.data_directory, "memory", "Percent Used")
         
         self._initialized = True
     

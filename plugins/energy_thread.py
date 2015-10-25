@@ -8,6 +8,7 @@ import json
 import signal
 import sys
 import shlex
+from datetime import datetime
 from threading import Lock, Thread
 from utilities import config_utils
 from utilities import thread_base
@@ -54,13 +55,6 @@ class Energy_Thread(thread_base.AS_Thread):
         self.meter_serial_number = int( self.meter_serial_number )
         filter_args = " -filterid="+str( self.meter_serial_number )
         
-        self.todays_starting_consumption = None
-        self.total_consumption = 0.0
-        self.todays_consumption = 0.0
-        self.yesterdays_consumption = 0.0
-        self.packets = Queue.Queue()
-        self.last_day = time.localtime().tm_mday
-        
         #
         # start rtl_tcp
         #
@@ -81,8 +75,33 @@ class Energy_Thread(thread_base.AS_Thread):
                                            bufsize=1, 
                                            close_fds=ON_POSIX)
         
+        self.todays_starting_consumption = None
+        self.total_consumption = 0.0
+        self.todays_consumption = 0.0
+        self.yesterdays_consumption = 0.0
+        self.packets = Queue.Queue()
+        self.last_day = time.localtime().tm_mday
+        
         self.data_logger = value_logger.Value_Logger(self.data_directory, "energy", "Electricity Used")
         
+        # Setup the initial values from the previously logged data
+        today_data = self.data_logger.get_data_set()
+        if today_data and len(today_data) > 0:
+            
+            self.total_consumption           = float( today_data[-1]['data'][0] )
+            self.todays_starting_consumption = float( today_data[0]['data'][0] )
+            self.todays_consumption          = self.total_consumption - self.todays_starting_consumption
+            
+            logger.info( "Initial data: total:           %.2f" % self.total_consumption )
+            logger.info( "Initial data: todays_starting: %.2f" % self.todays_starting_consumption )
+            logger.info( "Initial data: todays:          %.2f" % self.todays_consumption )
+        
+        yesterday_data = self.data_logger.get_data_set(-2)
+        if yesterday_data and len(yesterday_data) > 0:
+            self.yesterdays_consumption = float( yesterday_data[-1]['data'][0] ) - float( yesterday_data[0]['data'][0] )
+            logger.info( "Initial data: yesterday:       %.2f" % self.yesterdays_consumption )
+            
+            
         def enqueue_output(out, queue):
             f = open("logs/rtlamr.log",'w')
             for line in iter(out.readline, b''):
@@ -213,7 +232,12 @@ class Energy_Thread(thread_base.AS_Thread):
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <div id="energy_chart_div"></div>
+                            <div id="today_energy_chart_div"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div id="history_energy_chart_div"></div>
                         </div>
                     </div>
                 </div>
@@ -239,9 +263,63 @@ class Energy_Thread(thread_base.AS_Thread):
             
             ready_function_array.push( drawEnergyDataOnReady )
             
-            """ % ( self.data_logger.get_google_linechart_javascript("Energy Usage", "energy_chart_div"),
+            """ % ( self.data_logger.get_google_linechart_javascript("Energy Usage", "today_energy_chart_div"),
                     self.data_directory + "/today.csv" )
             
+            #
+            # Now generate a bar chart of the past days, only if data for past days exists
+            #
+            num_data_sets = self.data_logger.num_data_sets()
+            if num_data_sets > 1:
+                
+                array_string = ""
+                
+                for set_index in range(-num_data_sets,0):
+                    first = self.data_logger.get_data_item(dataset=set_index, index=0)
+                    last  = self.data_logger.get_data_item(dataset=set_index, index=-1)
+                    
+                    if first == None or last == None:
+                        continue
+                    
+                    dt = datetime.fromtimestamp(first['time'])
+                    year   = dt.strftime('%Y')
+                    month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
+                    day    = dt.strftime('%d')
+                    date_str = 'new Date(%s,%s,%s)' % (year,month,day)
+                    
+                    usage = float( last['data'][0] ) - float( first['data'][0] )
+                    
+                    array_string += "[ %s, %.2f ],\n" % ( date_str, usage )
+                    
+                # Remove the trailing comma and return line    
+                if len(array_string) > 2:
+                    array_string = array_string[:-2]
+        
+                    
+                
+                jscript += """
+                
+                function drawEnergyHistoryData(data)
+                {
+                    var dataTable = new google.visualization.DataTable();
+                    
+                    dataTable.addColumn({ type: 'date',   id: 'Time of Day' });
+                    dataTable.addColumn({ type: 'number', id: 'Energy Used' });
+                    
+                    dataTable.addRows([
+                    
+                    %s             //   ENERGY DATA
+            
+                    ]);
+            
+                    chart = new google.visualization.ColumnChart(document.getElementById('history_energy_chart_div'));
+                    chart.draw(dataTable);
+                }
+                
+                ready_function_array.push( drawEnergyHistoryData )
+                
+                """ % array_string
+                
             return jscript
         return ""
         
