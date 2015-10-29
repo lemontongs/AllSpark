@@ -183,7 +183,7 @@ class Security_Thread(thread_base.AS_Thread):
                 }
                 ready_function_array.push( drawSecurityData )
                 
-            """ % self.data_logger.get_google_timeline_javascript("Zone","security_chart_div")
+            """ % self.data_logger.get_google_timeline_javascript("Security State", "Zone","security_chart_div")
         
         return jscript
     

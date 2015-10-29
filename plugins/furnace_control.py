@@ -174,7 +174,7 @@ class Furnace_Control(thread_base.AS_Thread):
                 }
                 ready_function_array.push( drawFurnaceData )
                 
-            """ % self.data_logger.get_google_timeline_javascript("Zone","furnace_chart_div")
+            """ % self.data_logger.get_google_timeline_javascript("Furnace State", "Zone","furnace_chart_div")
         
         return jscript
     

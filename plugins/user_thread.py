@@ -142,7 +142,7 @@ class User_Thread(thread_base.AS_Thread):
                 }
                 ready_function_array.push( drawUserData )
                 
-            """ % self.data_logger.get_google_timeline_javascript("User","user_chart_div")
+            """ % self.data_logger.get_google_timeline_javascript("User State", "User","user_chart_div")
         
         return jscript
     

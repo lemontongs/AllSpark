@@ -211,7 +211,7 @@ class Energy_Thread(thread_base.AS_Thread):
             
             ready_function_array.push( drawEnergyDataOnReady )
             
-            """ % ( self.data_logger.get_google_linechart_javascript("Energy Usage", "today_energy_chart_div"),
+            """ % ( self.data_logger.get_google_linechart_javascript("Energy Usage", "today_energy_chart_div", "height: 340"),
                     self.data_directory + "/today.csv" )
             
             #
