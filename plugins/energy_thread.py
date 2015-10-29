@@ -75,32 +75,10 @@ class Energy_Thread(thread_base.AS_Thread):
                                            bufsize=1, 
                                            close_fds=ON_POSIX)
         
-        self.todays_starting_consumption = None
-        self.total_consumption = 0.0
-        self.todays_consumption = 0.0
-        self.yesterdays_consumption = 0.0
         self.packets = Queue.Queue()
-        self.last_day = time.localtime().tm_mday
         
         self.data_logger = value_logger.Value_Logger(self.data_directory, "energy", "Electricity Used")
         
-        # Setup the initial values from the previously logged data
-        today_data = self.data_logger.get_data_set()
-        if today_data and len(today_data) > 0:
-            
-            self.total_consumption           = float( today_data[-1]['data'][0] )
-            self.todays_starting_consumption = float( today_data[0]['data'][0] )
-            self.todays_consumption          = self.total_consumption - self.todays_starting_consumption
-            
-            logger.info( "Initial data: total:           %.2f" % self.total_consumption )
-            logger.info( "Initial data: todays_starting: %.2f" % self.todays_starting_consumption )
-            logger.info( "Initial data: todays:          %.2f" % self.todays_consumption )
-        
-        yesterday_data = self.data_logger.get_data_set(-2)
-        if yesterday_data and len(yesterday_data) > 0:
-            self.yesterdays_consumption = float( yesterday_data[-1]['data'][0] ) - float( yesterday_data[0]['data'][0] )
-            logger.info( "Initial data: yesterday:       %.2f" % self.yesterdays_consumption )
-            
             
         def enqueue_output(out, queue):
             f = open("logs/rtlamr.log",'w')
@@ -159,26 +137,9 @@ class Energy_Thread(thread_base.AS_Thread):
                         # Check for a match
                         if serial == self.meter_serial_number:
                             
-                            if self.todays_starting_consumption == None:
-                                self.todays_starting_consumption = consumption
-                            
                             # Save the data
                             self.data_logger.add_data([str(consumption)])
                             
-                            self.total_consumption = consumption
-                            self.todays_consumption = consumption - self.todays_starting_consumption
-                            
-                            # New day transition
-                            now = time.time()
-                            if time.localtime(now).tm_mday != self.last_day:
-                                self.last_day = time.localtime(now).tm_yday
-                                self.yesterdays_consumption = self.todays_consumption
-                                self.todays_consumption = 0
-                                self.todays_starting_consumption = consumption
-                                
-                            logger.info( "Total: %.2f  Today: %.2f Yesterday: %.2f" % ( self.total_consumption,
-                                                                                        self.todays_consumption,
-                                                                                        self.yesterdays_consumption ) )
                         else:
                             logger.debug( "NO MATCH" )
                         
@@ -225,25 +186,12 @@ class Energy_Thread(thread_base.AS_Thread):
                     <div class="row">
                         <div class="col-md-12">
                             <h2>Energy:</h2>
-                            <p>Yesterday: %.2f kWh</p>
-                            <p>Today: %.2f kWh</p>
-                            <p>Total: %.2f kWh</p>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12">
                             <div id="today_energy_chart_div"></div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12">
                             <div id="history_energy_chart_div"></div>
                         </div>
                     </div>
                 </div>
-            """ % ( self.get_yesterdays_consumption(), 
-                    self.get_todays_consumption(), 
-                    self.get_total_consumption() )
+            """
         
             return html
         return ""

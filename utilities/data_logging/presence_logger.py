@@ -36,14 +36,17 @@ class Presence_Logger(data_logger_base.Data_Logger):
         
         # Save the first state
         start_times = {}
+        last_present_times = {}
         for item in self.data_item_names:
             
             data = self.get_data_item(index=0)
             
             if data and item in data['data']:
-                start_times[item] = data['time_str']
+                start_times[item]        = data['time_str']
+                last_present_times[item] = data['time_str']
             else:
                 start_times[item] = None
+                last_present_times[item] = None
         
         # Go through the data and write out a string whenever the item
         # is no longer present.
@@ -58,22 +61,24 @@ class Presence_Logger(data_logger_base.Data_Logger):
                 if item in row_data:
                     if start_times[item] == None:  # No start time yet, add it
                         start_times[item] = row_time
+                    last_present_times[item] = row_time
                         
                 # Item is not present
                 else:
                     if start_times[item] != None:  # Has start time, add end time
                         # write a string
-                        return_string_data += ("['%s',  %s, %s],\n" % (item, start_times[item], row_time))
+                        return_string_data += ("['%s',  %s, %s],\n" % (item, start_times[item], last_present_times[item]))
                         # reset start time
                         start_times[item] = None
+                        last_present_times[item] = None
         
         # Make sure any items currently present get closed properly
         for item in self.data_item_names:
             if start_times[item] != None:
-                return_string_data += ("['%s',  %s, %s],\n" % (item, start_times[item], dataset[-1]["time_str"]))
+                return_string_data += ("['%s',  %s, %s],\n" % (item, start_times[item], last_present_times[item]))
                 
         # Remove the trailing comma and return line    
-        if len(return_string_data) > 2:
+        if return_string_data.endswith(",\n"):
             return_string_data = return_string_data[:-2]
         
         return return_string % return_string_data

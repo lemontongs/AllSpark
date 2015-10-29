@@ -3,6 +3,7 @@
 import ConfigParser
 import datetime
 import logging
+import logging.handlers
 import os
 import sys
 import signal
@@ -134,19 +135,20 @@ if log_level not in logging._levelNames:
 ############################################################################
 format_str = '%(asctime)s %(name)-30s %(levelname)-8s %(message)s'
 logging.getLogger('').handlers = []
-logging.basicConfig(level=logging._levelNames[log_level],
-                    format=format_str,
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    filename=log_filename,
-                    filemode='w')
 
-# define a Handler which writes INFO messages or higher to the sys.stderr
-console = logging.StreamHandler()
-console.setLevel(logging._levelNames[log_level])
-console.setFormatter(logging.Formatter(format_str))
+logging.basicConfig(level=logging._levelNames[log_level], 
+                    format=format_str,
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+# define a Handler which writes messages to a file
+file_handler = logging.handlers.TimedRotatingFileHandler(filename=log_filename, 
+                                                         when="midnight", 
+                                                         backupCount = 10) # only keep 10 days of logs
+file_handler.setLevel(logging._levelNames[log_level])
+file_handler.setFormatter(logging.Formatter(format_str))
 
 # add the handler to the logger
-logging.getLogger('allspark').addHandler(console)
+logging.getLogger('allspark').addHandler(file_handler)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 logging.getLogger('allspark').info("System Started!")

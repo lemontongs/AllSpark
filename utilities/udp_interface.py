@@ -5,26 +5,21 @@ import socket
 import select
 import Queue
 
-# addr = "225.1.1.1"
-# port = 5100
-# interface = "0.0.0.0"
-
-CONFIG_SEC_NAME = "udp"
-
-logger = logging.getLogger('allspark.'+CONFIG_SEC_NAME)
 
 class UDP_Socket(AS_Thread):
-    def __init__(self, address, port, thread_name = "udp_socket"):
+    def __init__(self, address, rx_port, tx_port, thread_name = "udp_interface"):
         AS_Thread.__init__(self, thread_name)
+        self.logger = logging.getLogger('allspark.'+thread_name)
         
         self.address = address
         if self.address == None:
             return
         
-        if port == None:
+        if rx_port == None or tx_port == None:
             return
         try:
-            self.port = int(port)
+            self.rx_port = int(rx_port)
+            self.tx_port = int(tx_port)
         except ValueError:
             return
         
@@ -33,7 +28,7 @@ class UDP_Socket(AS_Thread):
         self.sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_TTL, 20)
         self.sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_LOOP, 1)
         
-        self.sock.bind(('', self.port))
+        self.sock.bind(('', self.rx_port))
         
         self.sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_IF, socket.inet_aton("0.0.0.0"))
         self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton("0.0.0.0"))
@@ -43,7 +38,15 @@ class UDP_Socket(AS_Thread):
         self.messages = Queue.Queue()
         
         self._initialized = True
-        
+    
+    def clear(self):
+        if self.isInitialized():
+            try:
+                while True:
+                    self.messages.get_nowait()
+            except Queue.Empty:
+                self.logger.debug( "cleared" )
+    
     def get(self, timeout=0):
         if self.isInitialized():
             try:
@@ -58,7 +61,8 @@ class UDP_Socket(AS_Thread):
         return None
     
     def send_message(self, message):
-        self.sock.sendto(message.encode('utf-8'), (self.address, self.port))
+        self.logger.debug( "sending message: " + message )
+        self.sock.sendto(message.encode('utf-8'), (self.address, self.tx_port))
     
     def private_run(self):
         # Wait for data
@@ -67,24 +71,23 @@ class UDP_Socket(AS_Thread):
         if ready[0]:
             data, sender_addr = self.sock.recvfrom(4096)
             self.messages.put( (sender_addr, data) )
-            logger.info( "Got message: " + data )
+            self.logger.debug( "Got message: " + data )
     
     def private_run_cleanup(self):
         # Unregister multicast receive membership, then close the port
         self.sock.setsockopt(socket.SOL_IP, socket.IP_DROP_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton('0.0.0.0'))
         self.sock.close()
+        self.logger.debug( "cleanup" )
         
 
 if __name__ == "__main__":
-    import time
     
-    udp = UDP_Socket("225.1.1.1", 5100)
+    udp = UDP_Socket("225.1.1.2", 5400, 5300)
 
     udp.start()
     
-    for _ in range(10):
-        time.sleep(1)
-        print udp.get()
+    udp.send_message("00")
+    print udp.get(10)
     
     udp.stop()
 

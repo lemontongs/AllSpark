@@ -33,8 +33,12 @@ class Furnace_Control(thread_base.AS_Thread):
         if address == None:
             return
         
-        port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "port")
-        if port == None:
+        command_port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "command_port")
+        if command_port == None:
+            return
+        
+        response_port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "response_port")
+        if response_port == None:
             return
         
         # Get the device pins from the config file
@@ -47,13 +51,15 @@ class Furnace_Control(thread_base.AS_Thread):
             self.pins[device] = int(pin_str)
         
         # Furnace controller interface
-        self.furnace_controller = udp_interface.UDP_Socket(address, port, CONFIG_SEC_NAME+"_interface")
+        self.furnace_controller = udp_interface.UDP_Socket(address, response_port, command_port, CONFIG_SEC_NAME+"_inf")
         if not self.furnace_controller.isInitialized():
             logger.error( "Failed to initialize furnace_controller" )
             return
+        self.furnace_controller.start()
         
         # Setup data logger
         self.data_logger = presence_logger.Presence_Logger( data_directory, "furnace", self.zones ) 
+        
         
         self._initialized = True
 
@@ -81,40 +87,63 @@ class Furnace_Control(thread_base.AS_Thread):
             self.furnace_controller.send_message(str(pin)+"0")
     
     def private_run(self):
-            zones_that_are_heating = []
-            
-            try:
-                for zone in self.zones:
-                    
-                    temp = self.og.thermostat.get_current_device_temp(zone)
-                    pin = self.pins[zone]
-                    set_p = self.og.set_point.get_set_point(zone)
-                    
-                    s = ""
-                    if temp == -1000.0:
-                        s = "invalid"
-                        self.off(pin)
-                    elif temp < set_p:
-                        s = "heating"
-                        zones_that_are_heating.append( zone )
-                        self.on(pin)
-                    elif temp > set_p + 1.0:
-                        s = "cooling"
-                        self.off(pin)
-                    
-                    logger.info("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s)
-                    
-                self.data_logger.add_data( zones_that_are_heating )
-            
-            except Exception as e:
-                tb = "".join( traceback.format_tb(sys.exc_info()[2]) )
-                self.logger.error( "exception occured in " + self.name + " thread: \n" + tb + "\n" + str( e ) ) 
-                
-            for _ in range(60):
-                if self.isRunning():
-                    time.sleep(1)
         
+        # Send a heartbeat request
+        logger.debug( "Sending heartbeat request to furnace controller" )
+        self.furnace_controller.clear()
+        self.furnace_controller.send_message( "00" )
+        
+        # Wait for the response
+        response = self.furnace_controller.get(timeout = 5)
+        if response != None:
+            (_,data) = response
+            if data == "OK":
+                logger.info( "Got heartbeat from furnace controller: " + data )
+            else:
+                logger.warning( "Got unexpected response from furnace controller: " + data )
+                # TODO: reset the furnace controller 
+        else:
+            logger.warning( "Got no response from furnace controller" )
+            # TODO: reset the furnace controller 
+        
+        zones_that_are_heating = []
+        
+        try:
+            # For each zone
+            for zone in self.zones:
+                
+                # Get the zones temp and set poin information
+                temp = self.og.thermostat.get_current_device_temp(zone)
+                pin = self.pins[zone]
+                set_p = self.og.set_point.get_set_point(zone)
+                
+                # Check the temp and turn the furnace on or off accordingly
+                s = ""
+                if temp == -1000.0:
+                    s = "invalid"
+                    self.off(pin)
+                elif temp < set_p:
+                    s = "heating"
+                    zones_that_are_heating.append( zone )
+                    self.on(pin)
+                elif temp > set_p + 1.0:
+                    s = "cooling"
+                    self.off(pin)
+                
+                logger.info("Z: "+zone+" T: "+str(temp)+" SP: "+str(set_p)+" "+s)
+            
+            # Log the data
+            self.data_logger.add_data( zones_that_are_heating )
+        
+        except Exception as e:
+            tb = "".join( traceback.format_tb(sys.exc_info()[2]) )
+            self.logger.error( "exception occured in " + self.name + " thread: \n" + tb + "\n" + str( e ) ) 
+            
+        for _ in range(60):
+            if self.isRunning():
+                time.sleep(1)
     
+
     def get_html(self):
         html = ""
         
@@ -156,32 +185,23 @@ if __name__ == "__main__":
     import ConfigParser
     
     logging.getLogger('').handlers = []
-    console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
-    format_str = '%(asctime)s %(name)-30s %(levelname)-8s %(message)s'
-    console.setFormatter(logging.Formatter(format_str))
-    logger.addHandler(console)
+    logging.basicConfig(level=logging.DEBUG, 
+                        format='%(asctime)s %(name)-30s %(levelname)-8s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+        
+    config = ConfigParser.ConfigParser()
+    config.add_section(CONFIG_SEC_NAME)
+    config.set(CONFIG_SEC_NAME, "data_directory", "test_data")
+    config.set(CONFIG_SEC_NAME, "address",        "225.1.1.2")
+    config.set(CONFIG_SEC_NAME, "command_port",   "5300")
+    config.set(CONFIG_SEC_NAME, "response_port",  "5400")
+    config.set(CONFIG_SEC_NAME, "top_floor_temp",     "3")
+    config.set(CONFIG_SEC_NAME, "main_floor_temp",    "4")
+    config.set(CONFIG_SEC_NAME, "basement_floor_temp","5")
     
     #TODO: fix this!
     temp = 80.0
     modifier = 1.0
-    
-    def get_temp():
-        global temp, modifier
-        if temp > 80 or temp < 70:
-            modifier = -modifier
-        temp = temp + modifier
-        return temp
-    
-    config = ConfigParser.ConfigParser()
-    config.add_section(CONFIG_SEC_NAME)
-    config.set(CONFIG_SEC_NAME, "data_file",      "test_data/today.csv")
-    config.set(CONFIG_SEC_NAME, "data_directory", "test_data")
-    config.set(CONFIG_SEC_NAME, "address",        "225.1.1.2")
-    config.set(CONFIG_SEC_NAME, "port",           "5300")
-    config.set(CONFIG_SEC_NAME, "top_floor_temp",     "3")
-    config.set(CONFIG_SEC_NAME, "main_floor_temp",    "4")
-    config.set(CONFIG_SEC_NAME, "basement_floor_temp","5")
     
     class subclass():
         def getDeviceNames(self):
@@ -190,9 +210,9 @@ if __name__ == "__main__":
             global temp, modifier
             if temp > 80 or temp < 70:
                 modifier = -modifier
-            temp = temp + modifier
-            print temp
+            temp += modifier
             return temp
+        
         def get_set_point(self, zone):
             return 75
     class OG():
@@ -204,21 +224,26 @@ if __name__ == "__main__":
     
     fc = Furnace_Control(og, config)
     
-    fc.on("3")
-    time.sleep(1)
-    fc.off("3")
-    time.sleep(1)
-    fc.on("3")
-    fc.on("4")
-    fc.on("5")
-    time.sleep(1)
+    if not fc.isInitialized():
+        print "NOT INITIALIZED"
     
-    fc.start()
-    time.sleep(10)
-    
-    fc.on("3")
-    fc.on("4")
-    fc.on("5")
-    time.sleep(1)
-    fc.stop()
+    else:
+        
+    #     fc.on("3")
+    #     time.sleep(1)
+    #     fc.off("3")
+    #     time.sleep(1)
+    #     fc.on("3")
+    #     fc.on("4")
+    #     fc.on("5")
+    #     time.sleep(1)
+        
+        fc.start()
+        time.sleep(80)
+        
+    #     fc.on("3")
+    #     fc.on("4")
+    #     fc.on("5")
+    #     time.sleep(1)
+        fc.stop()
 

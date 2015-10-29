@@ -18,7 +18,7 @@ class Device_Listener(AS_Thread):
     def __init__(self):
         AS_Thread.__init__(self, CONFIG_SEC_NAME)
         
-        self._udp = UDP_Socket(LISTEN_ADDR, LISTEN_PORT)
+        self._udp = UDP_Socket(LISTEN_ADDR, LISTEN_PORT, LISTEN_PORT, CONFIG_SEC_NAME+"_inf")
         self._udp.start()
         
         self._devices = {}
