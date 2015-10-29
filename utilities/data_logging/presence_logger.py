@@ -40,10 +40,11 @@ class Presence_Logger(data_logger_base.Data_Logger):
     
             ]);
     
-            chart = new google.visualization.Timeline(document.getElementById('%s'));
-            chart.draw(dataTable);
+            var chart = new google.visualization.Timeline(document.getElementById('%s'));
+            var options = %s;
+            chart.draw(dataTable, options);
             
-            """ % (item_name, "%s", div_id)
+            """ % (item_name, "%s", div_id, options)
             
             
             # Initialize the state dictionaries
