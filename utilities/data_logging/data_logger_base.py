@@ -137,8 +137,11 @@ class Data_Logger():
             logger.error( "add_data called with non-list data" )
             return
         
+        # If this item is blank and the last item was not blank, add a blank item
         if len( data ) < 1:
-            return
+            last_item = self.get_data_item()
+            if last_item != None and len( last_item['data'] ) == 0:
+                return
         
         #logger.debug( "caller: " + os.path.basename(inspect.stack()[1][1]) + " gave me: " + str( data ) )
         
