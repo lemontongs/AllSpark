@@ -93,20 +93,24 @@ class Data_Logger():
         if os.path.isfile(filepath):
             f = open(filepath, 'r')
             for line in f.readlines():
-                line_data = line.rstrip().split(',')
+                try:
+                    line_data = line.rstrip().split(',')
+                    
+                    dt = datetime.datetime.fromtimestamp(float(line_data[0]))
+                    year   = dt.strftime('%Y')
+                    month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
+                    day    = dt.strftime('%d')
+                    hour   = dt.strftime('%H')
+                    minute = dt.strftime('%M')
+                    second = dt.strftime('%S')
+                    time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
+                    
+                    data.append( {'time_str':time_str, 
+                                  'time':float(line_data[0]), 
+                                  'data':line_data[1:]} )
+                except:
+                    logger.warning("Error parsing line in %s : '%s'" % (filepath, line) )
                 
-                dt = datetime.datetime.fromtimestamp(float(line_data[0]))
-                year   = dt.strftime('%Y')
-                month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
-                day    = dt.strftime('%d')
-                hour   = dt.strftime('%H')
-                minute = dt.strftime('%M')
-                second = dt.strftime('%S')
-                time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
-                
-                data.append( {'time_str':time_str, 
-                              'time':float(line_data[0]), 
-                              'data':line_data[1:]} )
             f.close()
             
         logger.debug("got: " + str(len(data)) )
