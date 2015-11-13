@@ -109,7 +109,7 @@ class Data_Logger():
                               'data':line_data[1:]} )
             f.close()
             
-        logger.debug("got: " + len(data) )
+        logger.debug("got: " + str(len(data)) )
             
         return data
     
