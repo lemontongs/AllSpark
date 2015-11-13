@@ -88,6 +88,8 @@ class Data_Logger():
     def load_file(self, filepath):
         data = []
         
+        logger.debug("loading: " + filepath)
+        
         if os.path.isfile(filepath):
             f = open(filepath, 'r')
             for line in f.readlines():
@@ -105,7 +107,10 @@ class Data_Logger():
                 data.append( {'time_str':time_str, 
                               'time':float(line_data[0]), 
                               'data':line_data[1:]} )
-    
+            f.close()
+            
+        logger.debug("got: " + len(data) )
+            
         return data
     
     
@@ -152,7 +157,7 @@ class Data_Logger():
         if time.localtime(now).tm_mday != self.last_day:
             self.last_day = time.localtime(now).tm_mday
             self.setup_data_file()
-            self.data.append([]) # add a new list to data (TODO: remove any larger than MAX_DAYS_OF_HISTORY)
+            self.data = self.load_history()
         
         # Build the data string
         result = str(now)

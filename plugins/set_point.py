@@ -133,6 +133,8 @@ class Set_Point():
             logger.warning( "Error parsing set_point message" )
             return
         
+        logger.debug("Got message: " + msg)
+        
         zone = msg.split(',')[1]
         
         self.set_point_lock.acquire()
@@ -147,6 +149,8 @@ class Set_Point():
                 set_point = float(msg.split(',')[2])
             except:
                 pass
+            
+            logger.debug("Set point for: " + zone + " changed to: " + str(set_point) )
             
             self.zones[zone]['set_point'] = set_point
             self.save_zones_to_file()
