@@ -109,7 +109,7 @@ class Data_Logger():
                                   'time':float(line_data[0]), 
                                   'data':line_data[1:]} )
                 except:
-                    logger.warning("Error parsing line in %s : '%s'" % (filepath, line) )
+                    logger.warning("Error parsing line in %s : '%s'" % (filepath, line.strip()) )
                 
             f.close()
             

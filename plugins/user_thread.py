@@ -88,7 +88,8 @@ class User_Thread(thread_base.AS_Thread):
             if self.users[user]['is_home']:
                 data.append(user)
                 someone_is_home = True
-                
+        
+        logger.info( "Someone is home: " + str(someone_is_home) )
         self.users_present = someone_is_home
         self.data_logger.add_data( data )
             
@@ -114,7 +115,7 @@ class User_Thread(thread_base.AS_Thread):
             if case_sensitive_user.lower() == user.lower():
                 return self.users[case_sensitive_user]['is_home'] 
         
-        logger.warning( "Warning: unknown user: "+user )
+        logger.warning( "unknown user: "+user )
         return False
     
     def get_html(self):
