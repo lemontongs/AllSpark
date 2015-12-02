@@ -19,6 +19,7 @@ class Security_State():
     
     _NORMAL = 1
     _TRIGGERED = 2
+    _ALARM = 3
     _state = _NORMAL
     _trigger_time = time.time()
     triggered_zones = []
@@ -27,8 +28,9 @@ class Security_State():
         self.delay = delay
     
     def clear(self):
-        logger.debug("security_state.clear")
-        self._state = self._NORMAL
+        if self._state != self._NORMAL:
+            logger.debug("security_state.clear")
+            self._state = self._NORMAL
         
     def trigger(self, zone):
         logger.debug("security_state.trigger (zone = %s)" % zone )
@@ -43,6 +45,7 @@ class Security_State():
     def should_alarm(self):
         if self._state == self._TRIGGERED:
             if time.time() - self._trigger_time > self.delay:
+                self._state = self._ALARM
                 logger.debug("security_state.alarm")
                 return True
         
