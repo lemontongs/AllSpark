@@ -27,19 +27,23 @@ class Security_State():
         self.delay = delay
     
     def clear(self):
+        logger.debug("security_state.clear")
         self._state = self._NORMAL
         
     def trigger(self, zone):
+        logger.debug("security_state.trigger (zone = %s)" % zone )
         if self._state == self._NORMAL:
             self._state = self._TRIGGERED
             self._trigger_time = time.time()
-            
+        
+        if self._state == self._TRIGGERED:
             if zone not in self.triggered_zones:
                 self.triggered_zones.append(zone)
         
     def should_alarm(self):
         if self._state == self._TRIGGERED:
-            if self._trigger_time - time.time() > self.delay:
+            if time.time() - self._trigger_time > self.delay:
+                logger.debug("security_state.alarm")
                 return True
         
         return False
@@ -243,7 +247,6 @@ class Security_Thread(thread_base.AS_Thread):
                         
                         # If nobody is home and something has changed, trigger a warning
                         if not self.og.user_thread.someone_is_present():
-                            logger.debug( "Triggered (zone = %s)" % self.zones[zone]['name'] )
                             self.security_state.trigger( self.zones[zone]['name'] )
                         
                     # <tr class="success">
