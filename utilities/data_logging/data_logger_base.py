@@ -122,7 +122,11 @@ class Data_Logger():
         history = []
         
         # For each file in the directory (sorted)
-        for filename in sorted( os.listdir(self.data_directory) )[MAX_DAYS_OF_HISTORY:]:
+        file_list = sorted( os.listdir( self.data_directory ) )
+        recent_list = file_list[MAX_DAYS_OF_HISTORY:]
+        logger.info("Parsing %d of %d files" % ( len(recent_list), len(file_list) ) )
+
+        for filename in recent_list:
             
             filepath = os.path.join( self.data_directory, filename )
             
