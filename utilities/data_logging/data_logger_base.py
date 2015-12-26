@@ -123,7 +123,7 @@ class Data_Logger():
         
         # For each file in the directory (sorted)
         file_list = sorted( os.listdir( self.data_directory ) )
-        recent_list = file_list[MAX_DAYS_OF_HISTORY:]
+        recent_list = file_list[-MAX_DAYS_OF_HISTORY:]
         logger.info("Parsing %d of %d files" % ( len(recent_list), len(file_list) ) )
 
         for filename in recent_list:
