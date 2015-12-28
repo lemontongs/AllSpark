@@ -182,7 +182,16 @@ class Security_Thread(thread_base.AS_Thread):
         if self.isInitialized():
 
             arm_button_text = self.security_state.get_state_string()
-            arm_button_color = "btn-warning" if arm_button_text == "DISARMED" else "btn-success"
+            arm_button_color = "btn-danger"
+
+            if arm_button_text == "DISARMED":
+                arm_button_color = "btn-info"
+            if arm_button_text == "ARMED":
+                arm_button_color = "btn-success"
+            if arm_button_text == "TRIGGERED":
+                arm_button_color = "btn-warning"
+            if arm_button_text == "ALARM":
+                arm_button_color = "btn-danger"
 
             html = """
                 <div id="security" class="jumbotron">
@@ -229,12 +238,16 @@ class Security_Thread(thread_base.AS_Thread):
                 function armSystem()
                 {
                     var command = "";
+                    var btn = $("button[name='arm_btn']")
 
-                    if ( $("button[name='arm_btn']").hasClass("btn-success") )
+                    // If it is not disarmed, send a disarm command
+                    if ( ! btn.hasClass("btn-info") )
                     {
                         command = "disarm"
                     }
-                    else if ( $("button[name='arm_btn']").hasClass("btn-warning") )
+
+                    // Otherwise send an arm command
+                    else
                     {
                         command = "arm"
                     }
@@ -251,7 +264,7 @@ class Security_Thread(thread_base.AS_Thread):
                         else if (result.trim() == "DISARMED")
                         {
                             btn.removeClass();
-                            btn.addClass('btn-warning');
+                            btn.addClass('btn-info');
                         }
                         else
                         {

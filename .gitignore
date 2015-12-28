@@ -1,5 +1,6 @@
 *.pyc
 *.csv
+.idea/workspace.xml
 log
 data
 
