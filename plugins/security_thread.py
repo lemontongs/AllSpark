@@ -297,6 +297,7 @@ class Security_Thread(thread_base.AS_Thread):
         #
         if self.og.user_thread.someone_is_present():
             self.security_state.clear()
+            self.security_state.disarm_system()
         
         #
         # Check to see if we should sound the alarm!!!
