@@ -9,7 +9,8 @@ CONFIG_SEC_NAME = "set_point"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class Set_Point():
+
+class SetPoint:
     def __init__(self, object_group, config):
         self.og = object_group
         self._initialized = False
@@ -19,14 +20,17 @@ class Set_Point():
             return
 
         self.set_point_filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "set_point_file")
-        if self.set_point_filename == None:
+        if self.set_point_filename is None:
             return
 
         # Create the set point file if it does not yet exist
         self.set_point_config = ConfigParser.ConfigParser()
         self.set_point_section = 'set_points'
         self.user_rule_section = 'rules'
-        
+
+        self.zones = {}
+        self.rules = {}
+
         # Load and verify the set point file.
         self.load_set_point_file()
         
@@ -35,8 +39,8 @@ class Set_Point():
     @staticmethod
     def get_template_config(config):
         config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME,"data_directory", "data")
-        config.set(CONFIG_SEC_NAME,"set_point_file", "%(data_directory)s/set_points.cfg")
+        config.set(CONFIG_SEC_NAME, "data_directory", "data")
+        config.set(CONFIG_SEC_NAME, "set_point_file", "%(data_directory)s/set_points.cfg")
         
     def load_set_point_file(self):
         
@@ -45,7 +49,7 @@ class Set_Point():
             self.set_point_config.add_section(self.set_point_section)
             self.set_point_config.add_section(self.user_rule_section)
             
-            for device in self.og.thermostat.getDeviceNames():
+            for device in self.og.thermostat.get_device_names():
                 self.set_point_config.set(self.set_point_section, device, "65.0")
             
         else:
@@ -54,47 +58,46 @@ class Set_Point():
             if not self.set_point_config.has_section(self.set_point_section):
                 self.set_point_config.add_section(self.set_point_section)
             
-            for device in self.og.thermostat.getDeviceNames():
+            for device in self.og.thermostat.get_device_names():
             
                 if not self.set_point_config.has_option(self.set_point_section, device):
                     self.set_point_config.set(self.set_point_section, device, "65.0")
                 
         # verify the contents of the file, and create the zones structure
         self.zones = {}
-        for device in self.og.thermostat.getDeviceNames():
+        for device in self.og.thermostat.get_device_names():
             
             t = 65.0
             try:
                 t = float(self.set_point_config.get(self.set_point_section, device, True))
-            except:
+            except ValueError:
                 pass
             
             if 50 > t or t > 90:
-                logger.warning( "set point for '" + device + "' is out of bounds (<50 or >90). Got: " + str(t) + ". Setting it to 65.0" )
+                logger.warning( "set point for '" + device + "' is out of bounds (<50 or >90). Got: " + str(t) +
+                                ". Setting it to 65.0" )
                 t = 65.0
             
-            self.zones[device] = { 'set_point':t }
+            self.zones[device] = { 'set_point': t }
             self.set_point_config.set(self.set_point_section, device, t)
-            
-        
+
         # Write the file, with the corrections (if any)
         self.save_zones_to_file()
         
         # Load the rules
-        self.rules = {'away_set_point' : 60.0, 'rules' : {} }
+        self.rules = {'away_set_point': 60.0, 'rules': {} }
         
         for option in self.set_point_config.options(self.user_rule_section):
             if 'away_set_point' in option:
                 try:
                     self.rules['away_set_point'] = \
                         float(self.set_point_config.get(self.user_rule_section, 'away_set_point', True))
-                except:
+                except ValueError:
                     pass
             else:
                 self.rules['rules'][option] = \
                     self.set_point_config.get(self.user_rule_section, option, True)
-        
-    
+
     def save_zones_to_file(self):
         for device in self.zones.keys():
             set_point = str(self.zones[device]['set_point'])
@@ -103,7 +106,6 @@ class Set_Point():
         with open(self.set_point_filename, 'wb') as configfile:
             self.set_point_config.write(configfile)
 
-    
     # Get the set point, this can be different if the user is not home
     def get_set_point(self, zone_name):
         if self._initialized:
@@ -140,14 +142,14 @@ class Set_Point():
         self.set_point_lock.acquire()
         try:
             if zone not in self.zones.keys():
-                logger.warning( "Error parsing set_point message: "+zone+" not found" )
+                logger.warning( "Error parsing set_point message: " + zone + " not found" )
                 self.set_point_lock.release()
                 return
                 
             set_point = 65.0
             try:
                 set_point = float(msg.split(',')[2])
-            except:
+            except ValueError:
                 pass
             
             logger.debug("Set point for: " + zone + " changed to: " + str(set_point) )
@@ -160,7 +162,7 @@ class Set_Point():
 
         self.set_point_lock.release()
 
-    def isInitialized(self):
+    def is_initialized(self):
         return self._initialized
     
     def get_html(self):
@@ -168,7 +170,7 @@ class Set_Point():
         
         for zone in self.zones:
             
-            zone_name       = zone.replace("_floor_temp","")
+            zone_name       = zone.replace("_floor_temp", "")
             zone_name_upper = zone_name[0].upper() + zone_name[1:]
             
             html += """
@@ -180,10 +182,13 @@ class Set_Point():
                 </div>
                 <div class="col-md-5">
                     <h2></h2>
-                    <div class="input-group input-group-lg">
-                        <input id="demo5" type="text" class="form-control" name="%s" value="%.1f">   <!-- ZONE NAME, SET POINT -->
+                    <div class="input-group input-group-lg">                              <!-- ZONE NAME, SET POINT -->
+                        <input type="text" class="form-control" name="%s" value="%.1f">
                         <div class="input-group-btn">
-                            <button name="%s" type="button" class="btn btn-primary" onclick="updateSetPoint('%s')">Submit</button>
+                            <button name="%s"
+                                    type="button"
+                                    class="btn btn-primary"
+                                    onclick="updateSetPoint('%s')">Submit</button>
                         </div>
                     </div>
                     <script>
@@ -201,20 +206,20 @@ class Set_Point():
                 </div>
             </div>
             
-            """ % ( zone_name_upper, \
-                    self.og.thermostat.get_current_device_temp( zone ), \
-                    zone, \
+            """ % ( zone_name_upper,
+                    self.og.thermostat.get_current_device_temp( zone ),
+                    zone,
                     self.get_set_point( zone ),
-                    zone+"_btn", \
+                    zone + "_btn",
                     zone,
                     zone )
-            
-        
+
         html += '</div>'
         
         return html
-    
-    def get_javascript(self):
+
+    @staticmethod
+    def get_javascript():
         jscript = """
         
         function updateSetPoint(device)
@@ -250,4 +255,3 @@ class Set_Point():
         """
         
         return jscript
-    

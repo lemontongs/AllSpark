@@ -1,21 +1,21 @@
 
-from thread_base import AS_Thread
+from thread_base import ASThread
 import logging
 import socket
 import select
 import Queue
 
 
-class UDP_Socket(AS_Thread):
+class UDPSocket(ASThread):
     def __init__(self, address, rx_port, tx_port, thread_name = "udp_interface"):
-        AS_Thread.__init__(self, thread_name)
-        self.logger = logging.getLogger('allspark.'+thread_name)
+        ASThread.__init__(self, thread_name)
+        self.logger = logging.getLogger('allspark.' + thread_name)
         
         self.address = address
-        if self.address == None:
+        if self.address is None:
             return
         
-        if rx_port == None or tx_port == None:
+        if rx_port is None or tx_port is None:
             return
         try:
             self.rx_port = int(rx_port)
@@ -31,7 +31,9 @@ class UDP_Socket(AS_Thread):
         self.sock.bind(('', self.rx_port))
         
         self.sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_IF, socket.inet_aton("0.0.0.0"))
-        self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton("0.0.0.0"))
+        self.sock.setsockopt(socket.SOL_IP,
+                             socket.IP_ADD_MEMBERSHIP,
+                             socket.inet_aton(self.address) + socket.inet_aton("0.0.0.0"))
         
         self.sock.setblocking(0)
         
@@ -40,7 +42,7 @@ class UDP_Socket(AS_Thread):
         self._initialized = True
     
     def clear(self):
-        if self.isInitialized():
+        if self.is_initialized():
             try:
                 while True:
                     self.messages.get_nowait()
@@ -48,7 +50,7 @@ class UDP_Socket(AS_Thread):
                 self.logger.debug( "cleared" )
     
     def get(self, timeout=0):
-        if self.isInitialized():
+        if self.is_initialized():
             try:
                 if timeout > 0:
                     msg = self.messages.get(True, timeout)
@@ -66,7 +68,7 @@ class UDP_Socket(AS_Thread):
     
     def private_run(self):
         # Wait for data
-        ready = select.select([self.sock], [], [], 1) # 1 second timeout
+        ready = select.select([self.sock], [], [], 1)  # 1 second timeout
     
         if ready[0]:
             data, sender_addr = self.sock.recvfrom(4096)
@@ -75,14 +77,16 @@ class UDP_Socket(AS_Thread):
     
     def private_run_cleanup(self):
         # Unregister multicast receive membership, then close the port
-        self.sock.setsockopt(socket.SOL_IP, socket.IP_DROP_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton('0.0.0.0'))
+        self.sock.setsockopt(socket.SOL_IP,
+                             socket.IP_DROP_MEMBERSHIP,
+                             socket.inet_aton(self.address) + socket.inet_aton('0.0.0.0'))
         self.sock.close()
         self.logger.debug( "cleanup" )
         
 
 if __name__ == "__main__":
     
-    udp = UDP_Socket("225.1.1.2", 5400, 5300)
+    udp = UDPSocket("225.1.1.2", 5400, 5300)
 
     udp.start()
     

@@ -22,9 +22,9 @@ CONFIG_SEC_NAME = "energy_thread"
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
 
-class Energy_Thread(thread_base.AS_Thread):
+class EnergyThread(thread_base.ASThread):
     def __init__(self, object_group, config):
-        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
         
         self.og = object_group
         self.mutex = Lock()
@@ -33,27 +33,27 @@ class Energy_Thread(thread_base.AS_Thread):
             return
 
         self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
-        if self.data_directory == None:
+        if self.data_directory is None:
             return
 
         rtl_exe = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_tcp_exe")
-        if rtl_exe == None or not os.path.isfile(rtl_exe):
+        if rtl_exe is None or not os.path.isfile(rtl_exe):
             return
 
         rtl_ppm = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_ppm")
         rtl_ppm_args = ""
         if rtl_ppm:
-            rtl_ppm_args = " -freqcorrection="+rtl_ppm
+            rtl_ppm_args = " -freqcorrection=" + rtl_ppm
         
         amr_exe = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_amr_exe")
-        if amr_exe == None or not os.path.isfile(amr_exe):
+        if amr_exe is None or not os.path.isfile(amr_exe):
             return
 
         self.meter_serial_number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "meter_serial_number")
-        if self.meter_serial_number == None:
+        if self.meter_serial_number is None:
             return
         self.meter_serial_number = int( self.meter_serial_number )
-        filter_args = " -filterid="+str( self.meter_serial_number )
+        filter_args = " -filterid=" + str( self.meter_serial_number )
         
         #
         # start rtl_tcp
@@ -77,41 +77,39 @@ class Energy_Thread(thread_base.AS_Thread):
         
         self.packets = Queue.Queue()
         
-        self.data_logger = value_logger.Value_Logger(self.data_directory, "energy", "Electricity Used")
-        
-            
+        self.data_logger = value_logger.ValueLogger(self.data_directory, "energy", "Electricity Used")
+
         def enqueue_output(out, queue):
-            f = open("logs/rtlamr.log",'w')
+            f = open("logs/rtlamr.log", 'w')
             for line in iter(out.readline, b''):
                 queue.put(line.rstrip())
                 f.write(line)
             f.close()
         
         self.output_thread = Thread( target = enqueue_output, args = (self.amr_handle.stdout, self.packets) )
-        self.output_thread.daemon = True # thread dies with the program
+        self.output_thread.daemon = True  # thread dies with the program
         self.output_thread.start()
         
         time.sleep(5)
 
-        if self.rtl_handle.returncode != None:
+        if self.rtl_handle.returncode is not None:
             logger.warning( "RTL_TCP exited with code:", str(self.rtl_handle.returncode) ) 
             return
             
-        if self.amr_handle.returncode != None:
+        if self.amr_handle.returncode is not None:
             logger.warning( "RTL_AMR exited with code:", str(self.amr_handle.returncode) ) 
             return
         
         self._initialized = True
-    
-    
+
     def private_run(self):
-        if self.isInitialized():
-            if self.rtl_handle.returncode != None:
+        if self.is_initialized():
+            if self.rtl_handle.returncode is not None:
                 logger.warning( "RTL_TCP exited with code: " + str(self.rtl_handle.returncode) )
                 self._running = False
                 return
                 
-            if self.amr_handle.returncode != None:
+            if self.amr_handle.returncode is not None:
                 logger.warning( "RTL_AMR exited with code: " + str(self.amr_handle.returncode) )
                 self._running = False
                 return
@@ -121,7 +119,7 @@ class Energy_Thread(thread_base.AS_Thread):
                 line = self.packets.get(timeout=1)
             except Queue.Empty:
                 pass
-            else: # got line
+            else:  # got line
                 try:
                     logger.debug( "Got line: " + line )
                     
@@ -132,7 +130,8 @@ class Energy_Thread(thread_base.AS_Thread):
                        'LastConsumptionCount' in packet['Message']:
                          
                         serial = packet['Message']['ERTSerialNumber']
-                        consumption = copy.deepcopy( float( int( packet['Message']['LastConsumptionCount'] ) / 100.0 ) ) # Convert to kWh
+                        # Convert to kWh
+                        consumption = copy.deepcopy( float( int( packet['Message']['LastConsumptionCount'] ) / 100.0 ) )
                         
                         # Check for a match
                         if serial == self.meter_serial_number:
@@ -150,37 +149,27 @@ class Energy_Thread(thread_base.AS_Thread):
                     if self._running:
                         time.sleep(1)
 
-    def get_total_consumption(self):
-        return self.total_consumption
-    
-    def get_todays_consumption(self):
-        return self.todays_consumption
-    
-    def get_yesterdays_consumption(self):
-        return self.yesterdays_consumption
-
     def private_run_cleanup(self):  
-        if self.isInitialized():      
+        if self.is_initialized():
             
-            if self.rtl_handle.returncode == None:
+            if self.rtl_handle.returncode is None:
                 logger.info( "killing: " + str(self.amr_handle.pid) )
                 os.kill(self.amr_handle.pid, signal.SIGKILL)
                 
-            if self.amr_handle.returncode == None:
+            if self.amr_handle.returncode is None:
                 logger.info( "killing: " + str(self.rtl_handle.pid) )
                 os.kill(self.rtl_handle.pid, signal.SIGKILL)
-    
-        
+
     @staticmethod
     def get_template_config(config):
         config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME,"rtl_tcp_exe", "/<path>/<to>/rtl_tcp")
-        config.set(CONFIG_SEC_NAME,"rtl_ppm", "0")
-        config.set(CONFIG_SEC_NAME,"rtl_amr_exe", "/<path>/<to>/rtlamr")
-        config.set(CONFIG_SEC_NAME,"meter_serial_number", "5555555555")
+        config.set(CONFIG_SEC_NAME, "rtl_tcp_exe", "/<path>/<to>/rtl_tcp")
+        config.set(CONFIG_SEC_NAME, "rtl_ppm", "0")
+        config.set(CONFIG_SEC_NAME, "rtl_amr_exe", "/<path>/<to>/rtlamr")
+        config.set(CONFIG_SEC_NAME, "meter_serial_number", "5555555555")
         
     def get_html(self):
-        if self.isInitialized():
+        if self.is_initialized():
             html = """
                 <div id="energy" class="jumbotron">
                     <div class="row">
@@ -197,7 +186,7 @@ class Energy_Thread(thread_base.AS_Thread):
         return ""
     
     def get_javascript(self):
-        if self.isInitialized():
+        if self.is_initialized():
             jscript = """
             function drawEnergyData(data)
             {
@@ -222,18 +211,18 @@ class Energy_Thread(thread_base.AS_Thread):
                 
                 array_string = ""
                 
-                for set_index in range(-num_data_sets,0):
+                for set_index in range(-num_data_sets, 0):
                     first = self.data_logger.get_data_item(dataset=set_index, index=0)
                     last  = self.data_logger.get_data_item(dataset=set_index, index=-1)
                     
-                    if first == None or last == None:
+                    if first is None or last is None:
                         continue
                     
                     dt = datetime.fromtimestamp(first['time'])
                     year   = dt.strftime('%Y')
-                    month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
+                    month  = str(int(dt.strftime('%m')) - 1)  # javascript expects month in 0-11, strftime gives 1-12
                     day    = dt.strftime('%d')
-                    date_str = 'new Date(%s,%s,%s)' % (year,month,day)
+                    date_str = 'new Date(%s,%s,%s)' % (year, month, day)
                     
                     usage = float( last['data'][0] ) - float( first['data'][0] )
                     
@@ -242,9 +231,7 @@ class Energy_Thread(thread_base.AS_Thread):
                 # Remove the trailing comma and return line    
                 if len(array_string) > 2:
                     array_string = array_string[:-2]
-        
-                    
-                
+
                 jscript += """
                 
                 function drawEnergyHistoryData(data)
@@ -270,12 +257,7 @@ class Energy_Thread(thread_base.AS_Thread):
                 
             return jscript
         return ""
-        
-        
-        
-        
-        
-        
+
 if __name__ == "__main__":
     from ConfigParser import ConfigParser
     
@@ -286,42 +268,21 @@ if __name__ == "__main__":
     console.setFormatter(logging.Formatter(format_str))
     logger.addHandler(console)
     
-    config = ConfigParser()
-    config.add_section(CONFIG_SEC_NAME)
-    config.set(CONFIG_SEC_NAME,"rtl_tcp_exe", "/usr/local/bin/rtl_tcp")
-    config.set(CONFIG_SEC_NAME,"rtl_ppm", "51")
-    config.set(CONFIG_SEC_NAME,"rtl_amr_exe", "/home/mlamonta/git/rtlamr/bin/rtlamr")
-    config.set(CONFIG_SEC_NAME,"meter_serial_number", "69148036")
+    conf = ConfigParser()
+    conf.add_section(CONFIG_SEC_NAME)
+    conf.set(CONFIG_SEC_NAME, "rtl_tcp_exe", "/usr/local/bin/rtl_tcp")
+    conf.set(CONFIG_SEC_NAME, "rtl_ppm", "51")
+    conf.set(CONFIG_SEC_NAME, "rtl_amr_exe", "/home/mlamonta/git/rtlamr/bin/rtlamr")
+    conf.set(CONFIG_SEC_NAME, "meter_serial_number", "69148036")
     
-    eng = Energy_Thread( 1, config )
+    eng = EnergyThread(1, conf)
     
-    if not eng.isInitialized():
+    if not eng.is_initialized():
         print "ERROR: initialization failed"
-        os._exit(0)
-    
-    print "Collecting data..."
-    
-    eng.start()
-    
-    try:
-        while eng.get_total_consumption() == 0:
-            time.sleep(5)
-        
-        print "Total: %f  Today: %f Yesterday: %f" % ( eng.get_total_consumption(),
-                                                       eng.get_todays_consumption(),
-                                                       eng.get_yesterdays_consumption() )
-    finally:
-        eng.stop()
 
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+    else:
+        print "Collecting data..."
+
+        eng.start()
+        time.sleep(50)
+        eng.stop()

@@ -3,14 +3,13 @@
 import sys
 import time
 from threading import Thread, Lock
-import os
 import zmq
 import logging
 
 logger = logging.getLogger('allspark.comms_thread')
 
 
-class Comms_Thread(Thread):
+class CommsThread(Thread):
     def __init__(self, port):
         Thread.__init__(self, name="comms_thread")
         self._initialized = False
@@ -29,7 +28,7 @@ class Comms_Thread(Thread):
         self._running = False
         self._initialized = True
 
-    def isInitialized(self):
+    def is_initialized(self):
         return self._initialized
 
     def stop(self):
@@ -59,7 +58,7 @@ class Comms_Thread(Thread):
             logger.error( "Started before _initialized, not _running" )
             return
         
-        f = open("logs/comms_log","a")
+        f = open("logs/comms_log", "a")
 
         self._running = self._run_lock.acquire()
         while self._running:
@@ -68,7 +67,7 @@ class Comms_Thread(Thread):
             
             logger.info( "Thread executed" )
         
-            f.write(str(time.time())+" GOT: "+str(msg)+"\n")
+            f.write(str(time.time()) + " GOT: " + str(msg) + "\n")
             f.flush()
             
             if msg == "quit":
@@ -84,7 +83,7 @@ class Comms_Thread(Thread):
             # call each registered callback
             functions = self.callbacks[topic]
             for func in functions:
-                f.write("calling: "+func.__name__+"\n")
+                f.write("calling: " + func.__name__ + "\n")
                 f.flush()
                 func(msg)
              
@@ -108,18 +107,19 @@ if __name__ == "__main__":
     def test_callback(msg):
         print msg
     
-    comms = Comms_Thread()
+    comms = CommsThread(5555)
     
-    if not comms.isInitialized():
+    if not comms.is_initialized():
         print "Failed to initialize"
-        os._exit(0)
-    
-    comms.register_callback("test", test_callback)
-    comms.start()
-    
-    print "Listening for messages for 10 seconds..."
-    time.sleep(5)
-    send_test()
-    time.sleep(5)
-    
-    comms.stop()
+
+    else:
+
+        comms.register_callback("test", test_callback)
+        comms.start()
+
+        print "Listening for messages for 10 seconds..."
+        time.sleep(5)
+        send_test()
+        time.sleep(5)
+
+        comms.stop()

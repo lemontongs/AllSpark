@@ -27,12 +27,12 @@ def write_template_config():
     
     # todo: missing general Twilio and udp sections
     
-    object_group.Object_Group.get_template_config( c )
-    c.write(open("example.cfg","wb"))
-    print "Created ./example.cfg"
+    object_group.ObjectGroup.get_template_config( c )
+    c.write(open("example.cfg", "wb"))
+    print "Created example.cfg"
 
 
-def build_html_file(filename, og):
+def build_html_file(filename, obj_group):
     global template_contents
     
     start = datetime.datetime.now()
@@ -47,7 +47,7 @@ def build_html_file(filename, og):
         logging.getLogger("allspark").debug("done reading template")
     
     logging.getLogger("allspark").debug("filling template")
-    content = template_contents % ( og.get_javascript(), og.get_html() )
+    content = template_contents % ( obj_group.get_javascript(), obj_group.get_html() )
     logging.getLogger("allspark").debug("done filling template")
     
     logging.getLogger("allspark").debug("writing HTML file")
@@ -58,7 +58,7 @@ def build_html_file(filename, og):
     logging.getLogger("allspark").debug("done writing HTML file")
     
     end = datetime.datetime.now()
-    graphite_logging.send_data("allspark.htmlBuildTime", (end-start).total_seconds() )
+    graphite_logging.send_data("allspark.htmlBuildTime", (end - start).total_seconds() )
 
 
 def remove_file(filename):
@@ -80,13 +80,13 @@ def check_permissions(filename):
 
 def print_usage():
     print "Usage: python %s [config file]   default=%s" % (sys.argv[0], config_filename)
-    os._exit(0)
+    sys.exit()
 
 
 def parse_config(filename):
-    config = ConfigParser.ConfigParser()
-    config.read(config_filename)
-    return config
+    c = ConfigParser.ConfigParser()
+    c.read(filename)
+    return c
 
 
 ################################################################################
@@ -104,7 +104,7 @@ if len(sys.argv) == 2:
         print_usage()
     elif "-e" == sys.argv[1] or "--example-config" == sys.argv[1]:
         write_template_config()
-        os._exit(0)
+        sys.exit()
     else:
         config_filename = sys.argv[1]
 
@@ -112,27 +112,27 @@ config = parse_config(config_filename)
 
 log_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_filename")
 if log_filename is None:
-    os._exit(1)
+    sys.exit(1)
     
 log_level = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_level")
 if log_level is None:
-    os._exit(1)
+    sys.exit(1)
 
 html_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "html_filename")
 if html_filename is None:
-    os._exit(1)
+    sys.exit(1)
 
 data_directory = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "data_directory")
 if data_directory is None:
-    os._exit(1)
+    sys.exit(1)
 
 if not os.path.exists(data_directory):
     os.makedirs(data_directory)
 
 check_permissions(html_filename)
 
-if log_level not in logging._levelNames:
-    print "WARNING: Invalid log level detected '"+log_level+"'. Using DEBUG log level."
+if logging.getLevelName(log_level).startswith("Level "):
+    print "WARNING: Invalid log level detected '" + log_level + "'. Using DEBUG log level."
     log_level = "DEBUG"
 
 ############################################################################
@@ -141,15 +141,15 @@ if log_level not in logging._levelNames:
 format_str = '%(asctime)s %(name)-30s %(levelname)-8s %(message)s'
 logging.getLogger('').handlers = []
 
-logging.basicConfig(level=logging._levelNames[log_level], 
+logging.basicConfig(level=logging.getLevelName(log_level),
                     format=format_str,
                     datefmt='%Y-%m-%d %H:%M:%S')
 
 # define a Handler which writes messages to a file
 file_handler = logging.handlers.TimedRotatingFileHandler(filename=log_filename, 
                                                          when="midnight", 
-                                                         backupCount = 10) # only keep 10 days of logs
-file_handler.setLevel(logging._levelNames[log_level])
+                                                         backupCount = 10)  # only keep 10 days of logs
+file_handler.setLevel(logging.getLevelName(log_level))
 file_handler.setFormatter(logging.Formatter(format_str))
 
 # add the handler to the logger
@@ -161,9 +161,9 @@ logging.getLogger('allspark').info("System Started!")
 ############################################################################
 # Instantiate and initialize the plugins
 ############################################################################
-og = object_group.Object_Group(config)
+og = object_group.ObjectGroup(config)
 
-if not og._initialized:
+if not og.is_initialized():
     logging.error("Error creating threads")
     sys.exit(1)
 
@@ -174,10 +174,10 @@ og.start()
 ############################################################################
 
 
-def receive_signal(signum, stack):
+def receive_signal(signum, _):
     logging.getLogger('allspark').info( "Caught signal: " + str(signum) + " closing threads..." )
     og.stop()
-    os._exit(0)
+    sys.exit(0)
 
 signal.signal(signal.SIGINT, receive_signal)
 

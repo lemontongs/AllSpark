@@ -1,7 +1,8 @@
 
 import data_logger_base
 
-class Value_Logger(data_logger_base.Data_Logger):
+
+class ValueLogger(data_logger_base.DataLogger):
     def __init__(self, log_directory, archive_prefix, value_names):
         
         if isinstance(value_names, list):
@@ -9,32 +10,31 @@ class Value_Logger(data_logger_base.Data_Logger):
         elif isinstance(value_names, str):
             self.value_names = [value_names]
         else:
-            print "Value_Logger: Unsupported input type: " + str( type(value_names) )
+            print "ValueLogger: Unsupported input type: " + str( type(value_names) )
             return
             
-        data_logger_base.Data_Logger.__init__(self, log_directory, archive_prefix)
+        data_logger_base.DataLogger.__init__(self, log_directory, archive_prefix)
     
     def get_google_linechart_javascript(self, title, div_id, chart_options=None):
         jscript = ""
-        if self.isInitialized():
+        if self.is_initialized():
             
             legend = []
             for name in self.value_names:
-                legend.append("'"+name+"'")
+                legend.append("'" + name + "'")
             
             if len( legend ) > 1:
                 legend_str = ",".join(legend)
             else:
                 legend_str = legend[0]
-            
-            
+
             options = "{ title: '%s'%s }" % (title, "%s")
             if isinstance( chart_options, str):
-                options = options % (", "+chart_options)
+                options %= (", " + chart_options)
             elif isinstance( chart_options, list):
-                options = options % (", " + ",".join(chart_options) )
+                options %= (", " + ",".join(chart_options) )
             else:
-                options = options % ""
+                options %= ""
             
             jscript = """
                 
@@ -72,7 +72,6 @@ class Value_Logger(data_logger_base.Data_Logger):
                 var chart = new google.visualization.LineChart(document.getElementById('%s'));
                 chart.draw(data, options);
                 
-                """ % ( legend_str, len(self.value_names)+1, options, div_id )
+                """ % ( legend_str, len(self.value_names) + 1, options, div_id )
         
         return jscript
-    

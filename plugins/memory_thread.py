@@ -1,5 +1,4 @@
 
-import os
 import time
 import psutil
 import logging
@@ -12,9 +11,10 @@ CONFIG_SEC_NAME = "memory_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class Memory_Thread(thread_base.AS_Thread):
+
+class MemoryThread(thread_base.ASThread):
     def __init__(self, object_group, config):
-        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
         
         self.og = object_group
         
@@ -24,7 +24,7 @@ class Memory_Thread(thread_base.AS_Thread):
             return
 
         self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
-        if self.data_directory == None:
+        if self.data_directory is None:
             return
 
         if "collect_period" not in config.options( CONFIG_SEC_NAME ):
@@ -32,7 +32,7 @@ class Memory_Thread(thread_base.AS_Thread):
         else:
             self.collect_period = float(config.get( CONFIG_SEC_NAME, "collect_period", True ) )
         
-        self.data_logger = value_logger.Value_Logger(self.data_directory, "memory", "Percent Used")
+        self.data_logger = value_logger.ValueLogger(self.data_directory, "memory", "Percent Used")
         
         self._initialized = True
     
@@ -56,7 +56,7 @@ class Memory_Thread(thread_base.AS_Thread):
     def get_html(self):
         html = ""
         
-        if self.isInitialized():
+        if self.is_initialized():
             html = """
                 <div id="sysinfo" class="jumbotron">
                     <div class="row">
@@ -74,7 +74,7 @@ class Memory_Thread(thread_base.AS_Thread):
     def get_javascript(self):
         jscript = ""
         
-        if self.isInitialized():
+        if self.is_initialized():
             jscript = """
                 function drawMemData(data)
                 {
@@ -89,35 +89,23 @@ class Memory_Thread(thread_base.AS_Thread):
                 ready_function_array.push( drawMemDataOnReady )
                 
                 """ % ( self.data_logger.get_google_linechart_javascript("Memory Usage", "mem_chart_div"), 
-                        self.data_directory+"/today.csv" )
+                        self.data_directory + "/today.csv" )
             
         return jscript
     
             
 if __name__ == "__main__":
     
-    mem = Memory_Thread(filename = "mem_usage.csv", collect_period = 2)
+    mem = MemoryThread( None, None )
     
-    if not mem.isInitialized():
+    if not mem.is_initialized():
         print "ERROR: initialization failed"
-        os._exit(0)
-    
-    mem.start()
-    
-    print "Collecting data (1 minute)..."
-    time.sleep(60)
-    
-    mem.stop()
 
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+    else:
+        mem.start()
+
+        print "Collecting data (1 minute)..."
+        time.sleep(60)
+
+        mem.stop()
+

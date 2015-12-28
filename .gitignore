@@ -1,6 +1,7 @@
 *.pyc
 *.csv
 .idea/workspace.xml
+.idea/dictionaries
 log
 data
 

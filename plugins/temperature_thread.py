@@ -1,7 +1,5 @@
 import os
-import sys
 import time
-import datetime
 import logging
 from threading import Lock
 from utilities import thread_base
@@ -23,9 +21,10 @@ CONFIG_SEC_NAME = "temperature_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class Temperature_Thread(thread_base.AS_Thread):
+
+class TemperatureThread(thread_base.ASThread):
     def __init__(self, object_group, config):
-        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
         
         self.og = object_group
         
@@ -37,10 +36,10 @@ class Temperature_Thread(thread_base.AS_Thread):
             return
 
         self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
-        if self.data_directory == None:
+        if self.data_directory is None:
             return
 
-        self.device_names = self.og.spark.getDeviceNames(postfix="_floor_temp")
+        self.device_names = self.og.spark.get_device_names(postfix="_floor_temp")
         
         for device in self.device_names:
             self.current_temps[device] = None
@@ -49,36 +48,32 @@ class Temperature_Thread(thread_base.AS_Thread):
         # Create the data directory if it does not exist
         if not os.path.exists(self.data_directory):
             os.makedirs(self.data_directory)
-        
-        
-        self.data_logger = value_logger.Value_Logger(self.data_directory, "temperatures", self.device_names)
+
+        self.data_logger = value_logger.ValueLogger(self.data_directory, "temperatures", self.device_names)
         
         self._initialized = True
-        
-        
-    
+
     @staticmethod
     def get_template_config(config):
         config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME,"data_directory", "data")
-        config.set(CONFIG_SEC_NAME,"temp_data_dir", "%(data_directory)s/temperature_data")
+        config.set(CONFIG_SEC_NAME, "data_directory", "data")
+        config.set(CONFIG_SEC_NAME, "temp_data_dir", "%(data_directory)s/temperature_data")
         config.set(CONFIG_SEC_NAME, "data_file", "%(temp_data_dir)s/today.csv")
     
-    def getDeviceNames(self):
+    def get_device_names(self):
         if not self._initialized:
-            logger.warning( "Warning: getDeviceNames called before _initialized" )
+            logger.warning( "Warning: get_device_names called before _initialized" )
             return []
         
         return self.device_names
     
-    def getPrettyDeviceNames(self):
+    def get_pretty_device_names(self):
         if not self._initialized:
-            logger.warning( "Warning: getPrettyDeviceNames called before _initialized" )
+            logger.warning( "Warning: get_pretty_device_names called before _initialized" )
             return []
         
-        return self.og.spark.getPrettyDeviceNames(postfix="_floor_temp")
-    
-    
+        return self.og.spark.get_pretty_device_names(postfix="_floor_temp")
+
     def private_run(self):
         logger.info( "Thread executing" )
     
@@ -90,16 +85,16 @@ class Temperature_Thread(thread_base.AS_Thread):
             device_temp = self.og.spark.getVariable(device, "temperature")
           
             try:
-                x = x + float(device_temp)
+                x += float(device_temp)
                 self.current_temps[device] = float(device_temp)
-                count = count + 1
-                graphite_logging.send_data(logger.name+"."+device, self.current_temps[device])
+                count += 1
+                graphite_logging.send_data(logger.name + "." + device, self.current_temps[device])
                 
             except (KeyboardInterrupt, SystemExit):
                 raise
             
-            except:
-                logger.error( "Error getting temperature ("+device+") setting to null" )
+            except ValueError:
+                logger.error( "Error getting temperature (" + device + ") setting to null" )
                 device_temp = "null"
                 self.current_temps[device] = None
                 
@@ -121,17 +116,17 @@ class Temperature_Thread(thread_base.AS_Thread):
     
     def get_current_device_temp(self, device):
         if device in self.current_temps:
-            if None == self.current_temps[device]:
+            if self.current_temps[device] is None:
                 return -1000.0
             else:
                 return self.current_temps[device]
-        logger.error( "WARNING:",device,"not found" ) 
+        logger.error( "WARNING:", device, "not found" )
         return -1000.0
     
     def get_html(self):
         html = ""
         
-        if self.isInitialized():
+        if self.is_initialized():
             html = """
             
             <div id="plot" class="jumbotron">
@@ -151,7 +146,7 @@ class Temperature_Thread(thread_base.AS_Thread):
     def get_javascript(self):
         jscript = ""
         
-        if self.isInitialized():
+        if self.is_initialized():
             jscript = """
               
                 function drawTempData(data)
@@ -169,4 +164,3 @@ class Temperature_Thread(thread_base.AS_Thread):
                     self.data_directory + "/today.csv" )
             
         return jscript
-    

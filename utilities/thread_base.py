@@ -5,7 +5,8 @@ import traceback
 import logging
 from threading import Thread, Lock
 
-class AS_Thread(Thread):
+
+class ASThread(Thread):
     
     def __init__(self, config_sec_name):
         Thread.__init__(self, name=config_sec_name)
@@ -13,19 +14,19 @@ class AS_Thread(Thread):
         self._initialized = False
         self._running     = False
         self.logger       = logging.getLogger('allspark.' + config_sec_name)
-        self.daemon       = True # thread dies with program
+        self.daemon       = True  # thread dies with program
         
-    def isInitialized(self):
+    def is_initialized(self):
         return self._initialized
           
-    def isRunning(self):
+    def is_running(self):
         return self._running
             
     def stop(self):
-        if self.isInitialized() and self.isRunning():
+        if self.is_initialized() and self.is_running():
             self.logger.info( "Stopping thread" )
-            self._running = False    # Signal thread to stop
-            self._run_lock.acquire() # Wait for thread to stop
+            self._running = False     # Signal thread to stop
+            self._run_lock.acquire()  # Wait for thread to stop
     
     def private_run(self):
         self.logger.warning("private_run function not overridden!")
@@ -38,7 +39,7 @@ class AS_Thread(Thread):
         
         self.logger.info( "Thread started" )
         
-        if not self.isInitialized():
+        if not self.is_initialized():
             self.logger.error( "Start called before _initialized, not _running" )
             return
         
@@ -58,4 +59,3 @@ class AS_Thread(Thread):
         
         self.logger.info( "Thread stopped" )
         self._run_lock.release()
-        

@@ -2,8 +2,8 @@
 
 import logging
 from threading import Lock
-from utilities.thread_base import AS_Thread
-from utilities.udp_interface import UDP_Socket
+from utilities.thread_base import ASThread
+from utilities.udp_interface import UDPSocket
 
 
 CONFIG_SEC_NAME = "device_listener"
@@ -13,24 +13,24 @@ logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 LISTEN_ADDR = "225.1.1.1"
 LISTEN_PORT = 5100
 
-class Device_Listener(AS_Thread):
+
+class DeviceListener(ASThread):
     
     def __init__(self):
-        AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        ASThread.__init__(self, CONFIG_SEC_NAME)
         
-        self._udp = UDP_Socket(LISTEN_ADDR, LISTEN_PORT, LISTEN_PORT, CONFIG_SEC_NAME+"_inf")
+        self._udp = UDPSocket(LISTEN_ADDR, LISTEN_PORT, LISTEN_PORT, CONFIG_SEC_NAME + "_inf")
         self._udp.start()
         
         self._devices = {}
         self._devices_lock = Lock()
         
         self._initialized = True
-        
-    
+
     def private_run(self):
         msg = self._udp.get(timeout = 2)
         if msg:
-            (_,data) = msg
+            (_, data) = msg
             
             segments = data.split(":")
             
@@ -42,24 +42,24 @@ class Device_Listener(AS_Thread):
                 self._devices_lock.acquire()
                 
                 if device_id not in self._devices:
-                    logger.info("Found a new device: " + device_id + \
-                                " with capability: " + device_capability + \
+                    logger.info("Found a new device: " + device_id +
+                                " with capability: " + device_capability +
                                 " at: " + device_ip)
                 else:
                     dev = self._devices[ device_id ]
                     
                     # Device IP address change
                     if dev['address'] != device_ip:
-                        logger.info("Device: " + device_id + \
-                                    " address changed from: " + dev['address'] + \
+                        logger.info("Device: " + device_id +
+                                    " address changed from: " + dev['address'] +
                                     " to: " + device_ip)
                          
-                    if  dev['capability'] != device_capability:
-                        logger.info("Device: " + device_id + \
-                                    " capability changed from: " + dev['capability'] + \
+                    if dev['capability'] != device_capability:
+                        logger.info("Device: " + device_id +
+                                    " capability changed from: " + dev['capability'] +
                                     " to: " + device_capability)
                     
-                self._devices[ device_id ] = {'address':device_ip, 'capability':device_capability}
+                self._devices[ device_id ] = {'address': device_ip, 'capability': device_capability}
                 
                 self._devices_lock.release()
         
@@ -67,7 +67,7 @@ class Device_Listener(AS_Thread):
         self._udp.stop()
         
     def get_devices(self):
-        if self.isInitialized():
+        if self.is_initialized():
             return self._devices
         
 
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     
     print "Unit test started!"
     
-    l = Device_Listener()
+    l = DeviceListener()
     l.start()
     
     try:
@@ -93,5 +93,3 @@ if __name__ == '__main__':
         pass
     
     l.stop()
-    
-    

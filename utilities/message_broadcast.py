@@ -1,8 +1,9 @@
 
 import socket
 
-class Message_Broadcast():
-    def __init__(self, address="225.1.1.1", port=5200, interface="0.0.0.0" ):
+
+class MessageBroadcast:
+    def __init__( self, address="225.1.1.1", port=5200, interface="0.0.0.0" ):
         
         self.address   = address
         self.port      = port
@@ -27,7 +28,9 @@ class Message_Broadcast():
         self.sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_IF, socket.inet_aton(self.interface))
         
         # Apply for messages sent to the specified address
-        self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton(self.interface))
+        self.sock.setsockopt(socket.SOL_IP,
+                             socket.IP_ADD_MEMBERSHIP,
+                             socket.inet_aton(self.address) + socket.inet_aton(self.interface))
         
     def send(self, msg):
         self.sock.sendto( msg, (self.address, self.port) )
@@ -38,7 +41,5 @@ class Message_Broadcast():
         self.sock.close()
 
 if __name__ == '__main__':
-    m = Message_Broadcast()
+    m = MessageBroadcast()
     m.send("HELLO WORLD!")
-    
-    

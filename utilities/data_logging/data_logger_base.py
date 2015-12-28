@@ -9,7 +9,8 @@ logger = logging.getLogger('allspark.data_logger')
 
 MAX_DAYS_OF_HISTORY = 7
 
-class Data_Logger():
+
+class DataLogger:
     def __init__(self, data_directory, archive_prefix):
         self._initialized = False
         self.mutex = Lock()
@@ -39,7 +40,7 @@ class Data_Logger():
         # Setup the link to todays data
         self.setup_data_file()
         
-    def isInitialized(self):
+    def is_initialized(self):
         return self._initialized
     
     def setup_data_file(self):
@@ -60,32 +61,31 @@ class Data_Logger():
         # Create the "today" link to todays data file
         os.symlink(today, self.filename)
 
-    
     def get_data_item(self, dataset = -1, index = -1):
-        if self.isInitialized():
+        if self.is_initialized():
             try:
                 return self.data[dataset][index]
             except IndexError:
-                logger.warning( "Asked for an item out of bounds: ["+str(dataset)+"],["+str(index)+"]" )
+                logger.warning( "Asked for an item out of bounds: [" + str(dataset) + "],[" + str(index) + "]" )
                 return None
         return None
-    
-    
+
     def get_data_set(self, dataset = -1):
-        if self.isInitialized():
+        if self.is_initialized():
             try:
                 return self.data[dataset]
             except IndexError:
-                logger.warning( "Asked for a dataset out of bounds: ["+str(dataset)+"]" )
+                logger.warning( "Asked for a dataset out of bounds: [" + str(dataset) + "]" )
                 return None
         return None
     
     def num_data_sets(self):
-        if self.isInitialized():
+        if self.is_initialized():
             return len(self.data)
         return 0
-    
-    def load_file(self, filepath):
+
+    @staticmethod
+    def load_file(filepath):
         data = []
         
         logger.debug("loading: " + filepath)
@@ -98,16 +98,16 @@ class Data_Logger():
                     
                     dt = datetime.datetime.fromtimestamp(float(line_data[0]))
                     year   = dt.strftime('%Y')
-                    month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
+                    month  = str(int(dt.strftime('%m')) - 1)  # javascript expects month in 0-11, strftime gives 1-12
                     day    = dt.strftime('%d')
                     hour   = dt.strftime('%H')
                     minute = dt.strftime('%M')
                     second = dt.strftime('%S')
-                    time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
+                    time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year, month, day, hour, minute, second)
                     
-                    data.append( {'time_str':time_str, 
-                                  'time':float(line_data[0]), 
-                                  'data':line_data[1:]} )
+                    data.append( {'time_str': time_str,
+                                  'time': float(line_data[0]),
+                                  'data': line_data[1:]} )
                 except:
                     logger.warning("Error parsing line in %s : '%s'" % (filepath, line.strip()) )
                 
@@ -116,8 +116,7 @@ class Data_Logger():
         logger.debug("got: " + str(len(data)) )
             
         return data
-    
-    
+
     def load_history(self):
         history = []
         
@@ -137,10 +136,8 @@ class Data_Logger():
                 history.append( self.load_file(filepath) )
         
         return history
-    
-    
-    
-    def add_data(self, data): # data should be an array of strings
+
+    def add_data(self, data):  # data should be an array of strings
         
         if not self._initialized:
             logger.error( "add_data called before _initialized." )
@@ -153,11 +150,9 @@ class Data_Logger():
         # If this item is blank and the last item was not blank, add a blank item
         if len( data ) < 1:
             last_item = self.get_data_item()
-            if last_item != None and len( last_item['data'] ) == 0:
+            if last_item is not None and len( last_item['data'] ) == 0:
                 return
-        
-        #logger.debug( "caller: " + os.path.basename(inspect.stack()[1][1]) + " gave me: " + str( data ) )
-        
+
         self.mutex.acquire()
         
         # Check if file needs to be changed
@@ -182,17 +177,17 @@ class Data_Logger():
         # Compute the javascript time string (probably not the best place for this)
         dt = datetime.datetime.fromtimestamp(now)
         year   = dt.strftime('%Y')
-        month  = str(int(dt.strftime('%m')) - 1) # javascript expects month in 0-11, strftime gives 1-12 
+        month  = str(int(dt.strftime('%m')) - 1)  # javascript expects month in 0-11, strftime gives 1-12
         day    = dt.strftime('%d')
         hour   = dt.strftime('%H')
         minute = dt.strftime('%M')
         second = dt.strftime('%S')
-        time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year,month,day,hour,minute,second)
+        time_str = 'new Date(%s,%s,%s,%s,%s,%s)' % (year, month, day, hour, minute, second)
     
         # Add the data
-        self.data[-1].append({'time_str':time_str, 
-                              'time':now,
-                              'data':data})
+        self.data[-1].append({'time_str': time_str,
+                              'time': now,
+                              'data': data})
         
         self.mutex.release()
     
@@ -200,10 +195,9 @@ class Data_Logger():
 if __name__ == "__main__":
     from pprint import pprint
     
-    data_logger = Data_Logger("data/temperature_data", "temperatures")
+    data_logger = DataLogger("data/temperature_data", "temperatures")
     
-    data_logger.add_data(["one","two","three"])
+    data_logger.add_data(["one", "two", "three"])
     
     pprint( data_logger.load_history() )
-    
-    
+

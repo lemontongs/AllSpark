@@ -9,9 +9,10 @@ CONFIG_SEC_NAME = "user_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
-class User_Thread(thread_base.AS_Thread):
+
+class UserThread(thread_base.ASThread):
     def __init__(self, object_group, config):
-        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
         
         self.og = object_group
         
@@ -19,11 +20,11 @@ class User_Thread(thread_base.AS_Thread):
             return
 
         self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
-        if self.data_directory == None:
+        if self.data_directory is None:
             return
 
         usernames = config_utils.get_config_param( config, CONFIG_SEC_NAME, "users")
-        if usernames == None:
+        if usernames is None:
             return
         usernames = usernames.split(",")
         
@@ -36,33 +37,35 @@ class User_Thread(thread_base.AS_Thread):
             if "mac" not in config.options(user):
                 print "mac property is missing from the " + user + " section"
                 return
-            self.users[user] = {'mac':config.get(user, "mac"), 'is_home':False, 'last_seen':0.0}
+            self.users[user] = {'mac': config.get(user, "mac"),
+                                'is_home': False,
+                                'last_seen': 0.0}
         
         self.users_present = True
         
-        self.data_logger = presence_logger.Presence_Logger(self.data_directory, "user_data", usernames)
+        self.data_logger = presence_logger.PresenceLogger(self.data_directory, "user_data", usernames)
         
         self._initialized = True
     
     @staticmethod
     def get_template_config(config):
         config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME,"temp_data_dir", "data")
+        config.set(CONFIG_SEC_NAME, "temp_data_dir", "data")
         config.set(CONFIG_SEC_NAME, "data_directory", "%(temp_data_dir)s/user_data")
         config.set(CONFIG_SEC_NAME, "users", "user_1,user_2,user_3")
         config.add_section("user_1")
-        config.set("user_1","mac", "xx:xx:xx:xx:xx:xx")
+        config.set("user_1", "mac", "xx:xx:xx:xx:xx:xx")
         config.add_section("user_2")
-        config.set("user_2","mac", "xx:xx:xx:xx:xx:xx")
+        config.set("user_2", "mac", "xx:xx:xx:xx:xx:xx")
         config.add_section("user_3")
-        config.set("user_3","mac", "xx:xx:xx:xx:xx:xx")
+        config.set("user_3", "mac", "xx:xx:xx:xx:xx:xx")
 
     def private_run(self):
         
         #
         # Check if a user is here now
         #
-        command = ["arp-scan","-l","--retry=5","--timeout=500"]
+        command = ["arp-scan", "-l", "--retry=5", "--timeout=500"]
         result = subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read()
         now = time.time()
         for user in self.users.keys():
@@ -77,12 +80,12 @@ class User_Thread(thread_base.AS_Thread):
             
             # Fire off a message when a user arrives home
             if not was_home and self.users[user]['is_home']:
-                self.og.broadcast.send( "user:"+user+" has arrived at home" )
+                self.og.broadcast.send( "user:" + user + " has arrived at home" )
         
         #
         # Process the collected data
         #
-        data=[]
+        data = []
         someone_is_home = False
         for user in self.users.keys():
             if self.users[user]['is_home']:
@@ -115,7 +118,7 @@ class User_Thread(thread_base.AS_Thread):
             if case_sensitive_user.lower() == user.lower():
                 return self.users[case_sensitive_user]['is_home'] 
         
-        logger.warning( "unknown user: "+user )
+        logger.warning( "unknown user: " + user )
         return False
     
     def get_html(self):
@@ -135,7 +138,7 @@ class User_Thread(thread_base.AS_Thread):
     def get_javascript(self):
         jscript = ""
         
-        if self.isInitialized():
+        if self.is_initialized():
             jscript = """
                 function drawUserData()
                 {
@@ -143,16 +146,6 @@ class User_Thread(thread_base.AS_Thread):
                 }
                 ready_function_array.push( drawUserData )
                 
-            """ % self.data_logger.get_google_timeline_javascript("User State", "User","user_chart_div")
+            """ % self.data_logger.get_google_timeline_javascript("User State", "User", "user_chart_div")
         
         return jscript
-    
-    
-    
-if __name__ == "__main__":
-    
-    user = User_Thread(filename = "user_state.csv", users = [("Matt","xx:xx:xx:xx:xx:xx")])
-
-    
-
-

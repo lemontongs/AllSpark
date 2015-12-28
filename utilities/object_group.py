@@ -18,7 +18,7 @@ logger = logging.getLogger('allspark.object_group')
 CONFIG_SEC_NAME = "general"
 
 
-class Object_Group():
+class ObjectGroup:
     def __init__(self, config):
         self._initialized = False
         self._running = False
@@ -34,63 +34,63 @@ class Object_Group():
         if spark_auth_filename is None:
             return
         
-        self.spark = spark_interface.Spark_Interface(self, spark_auth_filename)
+        self.spark = spark_interface.SparkInterface(self, spark_auth_filename)
         
-        if not self.spark.isInitialized():
+        if not self.spark.is_initialized():
             logger.error( "Failed to create spark interface" )
             return
 
         ############################################################################
         # Temperature Thread
         ############################################################################
-        self.thermostat = temperature_thread.Temperature_Thread(self, config = config)
+        self.thermostat = temperature_thread.TemperatureThread(self, config = config)
 
-        if not self.thermostat.isInitialized():
+        if not self.thermostat.is_initialized():
             logger.error( "Failed to create temperature thread" )
             return
 
         ############################################################################
         # User Thread
         ############################################################################
-        self.user_thread = user_thread.User_Thread(self, config = config)
+        self.user_thread = user_thread.UserThread(self, config = config)
 
-        if not self.user_thread.isInitialized():
+        if not self.user_thread.is_initialized():
             logger.error( "Failed to create user thread" )
             return
 
         ############################################################################
         # Memory Thread
         ############################################################################
-        self.mem = memory_thread.Memory_Thread(self, config = config)
+        self.mem = memory_thread.MemoryThread(self, config = config)
 
-        if not self.mem.isInitialized():
+        if not self.mem.is_initialized():
             logger.error( "Failed to create memory thread" )
             return
 
         ############################################################################
         # Furnace Control Thread
         ############################################################################
-        self.furnace_ctrl = furnace_control.Furnace_Control(self, config = config)
+        self.furnace_ctrl = furnace_control.FurnaceControl(self, config = config)
 
-        if not self.furnace_ctrl.isInitialized():
+        if not self.furnace_ctrl.is_initialized():
             logger.error( "Failed to create furnace controller" )
             return
 
         ############################################################################
         # Furnace Set Point Object
         ############################################################################
-        self.set_point = set_point.Set_Point(self, config = config)
+        self.set_point = set_point.SetPoint(self, config = config)
 
-        if not self.set_point.isInitialized():
+        if not self.set_point.is_initialized():
             logger.error( "Failed to create set point object" )
             return
 
         ############################################################################
         # Comms Thread
         ############################################################################
-        self.comms = comms_thread.Comms_Thread(port = 5555)
+        self.comms = comms_thread.CommsThread(port = 5555)
 
-        if not self.comms.isInitialized():
+        if not self.comms.is_initialized():
             logger.error( "Failed to create comms thread" )
             return
 
@@ -99,9 +99,9 @@ class Object_Group():
         ############################################################################
         # Security Thread
         ############################################################################
-        self.security = security_thread.Security_Thread(self, config = config)
+        self.security = security_thread.SecurityThread(self, config = config)
 
-        if not self.security.isInitialized():
+        if not self.security.is_initialized():
             logger.error( "Failed to create security thread" )
             return
 
@@ -110,26 +110,29 @@ class Object_Group():
         ############################################################################
         # Twilio
         ############################################################################
-        self.twilio = twilio_interface.Twilio_Interface(config = config)
+        self.twilio = twilio_interface.TwilioInterface(config = config)
 
-        if not self.twilio.isInitialized():
+        if not self.twilio.is_initialized():
             logger.error( "Failed to create twilio interface" )
             return
         
         ############################################################################
         # UDP Multicast
         ############################################################################
-        self.broadcast = message_broadcast.Message_Broadcast()
+        self.broadcast = message_broadcast.MessageBroadcast()
         
         ############################################################################
         # Energy Thread
         ############################################################################
-        self.energy = energy_thread.Energy_Thread(self, config = config)
+        self.energy = energy_thread.EnergyThread(self, config = config)
 
-        if not self.energy.isInitialized():
+        if not self.energy.is_initialized():
             logger.error( "Failed to create energy monitor" )
         
         self._initialized = True
+
+    def is_initialized(self):
+        return self._initialized
 
     def start(self):
         if self._initialized and not self._running:
@@ -154,30 +157,32 @@ class Object_Group():
             self._running = False
 
     def get_javascript(self):
-        return self.thermostat.get_javascript()   + \
-               self.mem.get_javascript()          + \
-               self.user_thread.get_javascript()  + \
-               self.security.get_javascript()     + \
-               self.furnace_ctrl.get_javascript() + \
-               self.set_point.get_javascript()    + \
-               self.energy.get_javascript()
+        return \
+            self.thermostat.get_javascript()   + \
+            self.mem.get_javascript()          + \
+            self.user_thread.get_javascript()  + \
+            self.security.get_javascript()     + \
+            self.furnace_ctrl.get_javascript() + \
+            self.set_point.get_javascript()    + \
+            self.energy.get_javascript()
         
     def get_html(self):
-        return self.thermostat.get_html()   + \
-               self.energy.get_html()       + \
-               self.furnace_ctrl.get_html() + \
-               self.set_point.get_html()    + \
-               self.user_thread.get_html()  + \
-               self.security.get_html()     + \
-               self.mem.get_html()
-        
+        return \
+            self.thermostat.get_html()   + \
+            self.energy.get_html()       + \
+            self.furnace_ctrl.get_html() + \
+            self.set_point.get_html()    + \
+            self.user_thread.get_html()  + \
+            self.security.get_html()     + \
+            self.mem.get_html()
+
     @staticmethod
     def get_template_config(config):
-        config = temperature_thread.Temperature_Thread.get_template_config(config)
-        config = furnace_control.Furnace_Control.get_template_config(config)
-        config = set_point.Set_Point.get_template_config(config)
-        config = security_thread.Security_Thread.get_template_config(config)
-        config = user_thread.User_Thread.get_template_config(config)
-        config = memory_thread.Memory_Thread.get_template_config(config)
-        config = energy_thread.Energy_Thread.get_template_config(config)
+        config = temperature_thread.TemperatureThread.get_template_config(config)
+        config = furnace_control.FurnaceControl.get_template_config(config)
+        config = set_point.SetPoint.get_template_config(config)
+        config = security_thread.SecurityThread.get_template_config(config)
+        config = user_thread.UserThread.get_template_config(config)
+        config = memory_thread.MemoryThread.get_template_config(config)
+        config = energy_thread.EnergyThread.get_template_config(config)
         return config

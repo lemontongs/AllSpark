@@ -1,5 +1,4 @@
 
-import os
 import time
 import logging
 from threading import Lock
@@ -16,7 +15,7 @@ CONFIG_SEC_NAME = "security_thread"
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
 
-class Security_State():
+class SecurityState:
     
     _DISARMED = 0
     _ARMED = 1
@@ -77,9 +76,9 @@ class Security_State():
         return False
 
 
-class Security_Thread(thread_base.AS_Thread):
+class SecurityThread(thread_base.ASThread):
     def __init__(self, object_group, config):
-        thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
+        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
         
         self.og = object_group
         self.mutex = Lock()
@@ -116,15 +115,15 @@ class Security_Thread(thread_base.AS_Thread):
         zone_names = []
         
         for zone in range(self.num_zones):
-            zone_index = "zone_"+str(zone)
+            zone_index = "zone_" + str(zone)
             
             if zone_index not in config.options(CONFIG_SEC_NAME):
-                print zone_index+" property missing from " + CONFIG_SEC_NAME + " section"
+                print zone_index + " property missing from " + CONFIG_SEC_NAME + " section"
                 return
                 
-            self.zones.append( { 'last':time.localtime(), \
-                                 'state':CLOSED, \
-                                 'name':config.get(CONFIG_SEC_NAME, zone_index)} )
+            self.zones.append( { 'last': time.localtime(),
+                                 'state': CLOSED,
+                                 'name': config.get(CONFIG_SEC_NAME, zone_index)} )
             
             zone_names.append( config.get(CONFIG_SEC_NAME, zone_index) )
 
@@ -134,15 +133,15 @@ class Security_Thread(thread_base.AS_Thread):
             self.collect_period = float(config.get(CONFIG_SEC_NAME, "collect_period", True))
         
         # Setup data data_logger
-        self.data_logger = presence_logger.Presence_Logger( data_directory, "security", zone_names ) 
+        self.data_logger = presence_logger.PresenceLogger(data_directory, "security", zone_names)
         
         # Setup UDP interface
-        self.udp = udp_interface.UDP_Socket( address, port, port, CONFIG_SEC_NAME+"_inf" )
-        if not self.udp.isInitialized():
+        self.udp = udp_interface.UDPSocket( address, port, port, CONFIG_SEC_NAME + "_inf" )
+        if not self.udp.is_initialized():
             return
         self.udp.start()
         
-        self.security_state = Security_State()
+        self.security_state = SecurityState()
         
         self.sensor_states = ""
         self._initialized = True
@@ -150,16 +149,16 @@ class Security_Thread(thread_base.AS_Thread):
     @staticmethod
     def get_template_config(config):
         config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME,"temp_data_dir", "data")
-        config.set(CONFIG_SEC_NAME,"data_directory", "%(temp_data_dir)s/security_data")
-        config.set(CONFIG_SEC_NAME,"breach_number", "+15551231234")
-        config.set(CONFIG_SEC_NAME,"monitor_device_name", "<particle security device name>")
-        config.set(CONFIG_SEC_NAME,"num_zones", "5")
-        config.set(CONFIG_SEC_NAME,"zone_0", "<zone 0 name>")
-        config.set(CONFIG_SEC_NAME,"zone_1", "<zone 1 name>")
-        config.set(CONFIG_SEC_NAME,"zone_2", "<zone 2 name>")
-        config.set(CONFIG_SEC_NAME,"zone_3", "<zone 3 name>")
-        config.set(CONFIG_SEC_NAME,"zone_4", "<zone 4 name>")
+        config.set(CONFIG_SEC_NAME, "temp_data_dir", "data")
+        config.set(CONFIG_SEC_NAME, "data_directory", "%(temp_data_dir)s/security_data")
+        config.set(CONFIG_SEC_NAME, "breach_number", "+15551231234")
+        config.set(CONFIG_SEC_NAME, "monitor_device_name", "<particle security device name>")
+        config.set(CONFIG_SEC_NAME, "num_zones", "5")
+        config.set(CONFIG_SEC_NAME, "zone_0", "<zone 0 name>")
+        config.set(CONFIG_SEC_NAME, "zone_1", "<zone 1 name>")
+        config.set(CONFIG_SEC_NAME, "zone_2", "<zone 2 name>")
+        config.set(CONFIG_SEC_NAME, "zone_3", "<zone 3 name>")
+        config.set(CONFIG_SEC_NAME, "zone_4", "<zone 4 name>")
 
     def parse_alarm_control_message(self, message):
         fields = message.split(",")
@@ -168,9 +167,9 @@ class Security_Thread(thread_base.AS_Thread):
         elif len(fields) == 2 and fields[1] == "disarm":
             self.security_state.disarm_system()
         else:
-            logger.warning("Got weird message: '"+message+"'")
+            logger.warning("Got weird message: '" + message + "'")
 
-    def getSensorStates(self):
+    def get_sensor_states(self):
         self.mutex.acquire()
         ss = self.sensor_states
         self.mutex.release()
@@ -179,7 +178,7 @@ class Security_Thread(thread_base.AS_Thread):
     def get_html(self):
         html = ""
         
-        if self.isInitialized():
+        if self.is_initialized():
 
             arm_button_text = self.security_state.get_state_string()
             arm_button_color = "btn-danger"
@@ -219,14 +218,14 @@ class Security_Thread(thread_base.AS_Thread):
                         </div>
                     </div>
                 </div>
-            """ % (arm_button_color, arm_button_text, self.getSensorStates())
+            """ % (arm_button_color, arm_button_text, self.get_sensor_states())
         
         return html
     
     def get_javascript(self):
         jscript = ""
         
-        if self.isInitialized():
+        if self.is_initialized():
             jscript = """
                 function drawSecurityData()
                 {
@@ -307,8 +306,8 @@ class Security_Thread(thread_base.AS_Thread):
             for zone in self.security_state.triggered_zones:
                 status += "\n" + zone
             
-            logger.info( status )
-            self.og.twilio.sendSMS( status, self.breach_number )
+            logger.info(status)
+            self.og.twilio.sendSMS(status, self.breach_number)
     
         #
         # Process the message
@@ -316,13 +315,13 @@ class Security_Thread(thread_base.AS_Thread):
         if msg is not None:
             
             # ( ( ip_address, port ), message )
-            ( _, state_str ) = msg
+            (_, state_str) = msg
             
             if len(state_str) != self.num_zones:
-                logger.warning( "Skipping invalid message!" )
+                logger.warning("Skipping invalid message!")
                 return
             
-            logger.info( "Got message: " + state_str )
+            logger.info("Got message: " + state_str)
             
             self.mutex.acquire()
             try:
@@ -335,16 +334,16 @@ class Security_Thread(thread_base.AS_Thread):
                     
                     # Save the closed zones for logger
                     if state == OPEN:
-                        zones_that_are_open.append( self.zones[zone]['name'] )
+                        zones_that_are_open.append(self.zones[zone]['name'])
                     
                     # record state changes
                     if state != self.zones[zone]['state']:
                         self.zones[zone]['state'] = state
-                        self.zones[zone]['last']  = time.localtime()
+                        self.zones[zone]['last'] = time.localtime()
                         
                         # If nobody is home and something has changed, trigger a warning
                         if not self.og.user_thread.someone_is_present():
-                            self.security_state.trigger( self.zones[zone]['name'] )
+                            self.security_state.trigger(self.zones[zone]['name'])
                         
                     # <tr class="success">
                     #     <td>Zone 1</td>
@@ -357,14 +356,14 @@ class Security_Thread(thread_base.AS_Thread):
                     else:
                         entry += 'danger">\n'
                     
-                    entry += '    <td>'+self.zones[zone]['name']+'</td>\n'
+                    entry += '    <td>' + self.zones[zone]['name'] + '</td>\n'
                     
                     if state == CLOSED:
                         entry += "    <td>closed</td>\n"
                     else:
                         entry += "    <td>open</td>\n"
                     
-                    entry += '    <td>'+ time.strftime('%b %d %I:%M%p', self.zones[zone]['last']) +'</td>\n'
+                    entry += '    <td>' + time.strftime('%b %d %I:%M%p', self.zones[zone]['last']) + '</td>\n'
                     entry += '</tr>\n'
                     
                     self.sensor_states += entry
@@ -383,17 +382,13 @@ class Security_Thread(thread_base.AS_Thread):
         
 if __name__ == "__main__":
     
-    sec = Security_Thread()
+    sec = SecurityThread( None, None )
     
-    if not sec.isInitialized():
+    if not sec.is_initialized():
         print "ERROR: initialization failed"
-        os._exit(0)
-    
-    sec.start()
-    
-    print "Collecting data (1 minute)..."
-    time.sleep(60)
-    
-    # print sec.get_history()
-    
-    sec.stop()
+
+    else:
+        sec.start()
+        print "Collecting data (1 minute)..."
+        time.sleep(60)
+        sec.stop()
