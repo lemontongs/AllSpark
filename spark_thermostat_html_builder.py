@@ -21,10 +21,11 @@ GENERAL_CONFIG_SEC = "general"
 # Functions
 ######################################################################
 
+
 def write_template_config():
     c = ConfigParser.ConfigParser()
     
-    #todo: missing general twilio and udp sections 
+    # todo: missing general Twilio and udp sections
     
     object_group.Object_Group.get_template_config( c )
     c.write(open("example.cfg","wb"))
@@ -38,7 +39,7 @@ def build_html_file(filename, og):
     
     logging.getLogger("allspark").debug("building HTML file")
     
-    if template_contents == None:
+    if template_contents is None:
         logging.getLogger("allspark").debug("reading template")
         f = open("thermostat_template.html", "r")
         template_contents = f.read()
@@ -58,12 +59,14 @@ def build_html_file(filename, og):
     
     end = datetime.datetime.now()
     graphite_logging.send_data("allspark.htmlBuildTime", (end-start).total_seconds() )
-    
+
+
 def remove_file(filename):
     try:
         os.remove(filename)
     except OSError:    # its OK if the file does not exist
         pass
+
 
 def check_permissions(filename):
     try:
@@ -74,9 +77,11 @@ def check_permissions(filename):
         print "check_permissions() got error:", sys.exc_info(), " on file:", filename
         sys.exit(1)
 
+
 def print_usage():
     print "Usage: python %s [config file]   default=%s" % (sys.argv[0], config_filename)
     os._exit(0)
+
 
 def parse_config(filename):
     config = ConfigParser.ConfigParser()
@@ -106,19 +111,19 @@ if len(sys.argv) == 2:
 config = parse_config(config_filename)
 
 log_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_filename")
-if log_filename == None:
+if log_filename is None:
     os._exit(1)
     
 log_level = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_level")
-if log_level == None:
+if log_level is None:
     os._exit(1)
 
 html_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "html_filename")
-if html_filename == None:
+if html_filename is None:
     os._exit(1)
 
 data_directory = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "data_directory")
-if data_directory == None:
+if data_directory is None:
     os._exit(1)
 
 if not os.path.exists(data_directory):
@@ -167,6 +172,8 @@ og.start()
 ############################################################################
 # Cleanup
 ############################################################################
+
+
 def receive_signal(signum, stack):
     logging.getLogger('allspark').info( "Caught signal: " + str(signum) + " closing threads..." )
     og.stop()
@@ -180,9 +187,9 @@ signal.signal(signal.SIGINT, receive_signal)
 
 while True:
     build_html_file(html_filename, og)
-    #os.system("/home/mlamonta/bin/blink1-tool -q --hsb=130,200,50")
+    # os.system("/home/mlamonta/bin/blink1-tool -q --hsb=130,200,50")
     time.sleep(60)
-    #os.system("/home/mlamonta/bin/blink1-tool -q --off")
+    # os.system("/home/mlamonta/bin/blink1-tool -q --off")
     
        
 

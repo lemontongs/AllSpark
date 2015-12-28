@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger('allspark.comms_thread')
 
+
 class Comms_Thread(Thread):
     def __init__(self, port):
         Thread.__init__(self, name="comms_thread")

@@ -15,30 +15,55 @@ CONFIG_SEC_NAME = "security_thread"
 
 logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
 
+
 class Security_State():
     
-    _NORMAL = 1
+    _DISARMED = 0
+    _ARMED = 1
     _TRIGGERED = 2
     _ALARM = 3
-    _state = _NORMAL
+
+    _string_map = {_DISARMED:  "DISARMED",
+                   _ARMED:     "ARMED",
+                   _TRIGGERED: "TRIGGERED",
+                   _ALARM:     "ALARM"}
+
+    _state = _ARMED
     _trigger_time = time.time()
     triggered_zones = []
     
-    def __init__(self, delay = 30): # number of seconds to wait before alarming
+    def __init__(self, delay = 30):  # number of seconds to wait before alarming
         self.delay = delay
-    
+
+    def get_state(self):
+        return self._state
+
+    def get_state_string(self):
+        return self._string_map[self._state]
+
+    def arm_system(self):
+        if self._state == self._DISARMED:
+            self._state = self._ARMED
+            logger.info("SYSTEM ARMED")
+
+    def disarm_system(self):
+        if self._state != self._DISARMED:
+            self._state = self._DISARMED
+            self.triggered_zones = []
+            logger.info("SYSTEM DISARMED")
+
     def clear(self):
-        if self._state != self._NORMAL:
+        if self._state >= self._TRIGGERED:
             logger.debug("security_state.clear")
-            self._state = self._NORMAL
+            self._state = self._ARMED
         
     def trigger(self, zone):
-        logger.debug("security_state.trigger (zone = %s)" % zone )
-        if self._state == self._NORMAL:
+        logger.debug( "security_state.trigger (zone = %s)" % zone )
+        if self._state == self._ARMED:
             self._state = self._TRIGGERED
             self._trigger_time = time.time()
         
-        if self._state == self._TRIGGERED:
+        if self._state >= self._TRIGGERED:
             if zone not in self.triggered_zones:
                 self.triggered_zones.append(zone)
         
@@ -52,7 +77,6 @@ class Security_State():
         return False
 
 
-
 class Security_Thread(thread_base.AS_Thread):
     def __init__(self, object_group, config):
         thread_base.AS_Thread.__init__(self, CONFIG_SEC_NAME)
@@ -64,28 +88,28 @@ class Security_Thread(thread_base.AS_Thread):
             return
 
         self.monitor_device_name = config_utils.get_config_param( config, CONFIG_SEC_NAME, "monitor_device_name")
-        if self.monitor_device_name == None:
+        if self.monitor_device_name is None:
             return
 
         self.breach_number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "breach_number")
-        if self.breach_number == None:
+        if self.breach_number is None:
             return
 
         self.num_zones = config_utils.get_config_param( config, CONFIG_SEC_NAME, "num_zones")
-        if self.num_zones == None:
+        if self.num_zones is None:
             return
         self.num_zones = int( self.num_zones )
 
         data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
-        if data_directory == None:
+        if data_directory is None:
             return
 
         address = config_utils.get_config_param( config, CONFIG_SEC_NAME, "address")
-        if address == None:
+        if address is None:
             return
 
         port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "port")
-        if port == None:
+        if port is None:
             return
         
         self.zones = []
@@ -103,8 +127,6 @@ class Security_Thread(thread_base.AS_Thread):
                                  'name':config.get(CONFIG_SEC_NAME, zone_index)} )
             
             zone_names.append( config.get(CONFIG_SEC_NAME, zone_index) )
-
-        #print self.zones
 
         if "collect_period" not in config.options(CONFIG_SEC_NAME):
             self.collect_period = 10
@@ -138,7 +160,16 @@ class Security_Thread(thread_base.AS_Thread):
         config.set(CONFIG_SEC_NAME,"zone_2", "<zone 2 name>")
         config.set(CONFIG_SEC_NAME,"zone_3", "<zone 3 name>")
         config.set(CONFIG_SEC_NAME,"zone_4", "<zone 4 name>")
-        
+
+    def parse_alarm_control_message(self, message):
+        fields = message.split(",")
+        if len(fields) == 2 and fields[1] == "arm":
+            self.security_state.arm_system()
+        elif len(fields) == 2 and fields[1] == "disarm":
+            self.security_state.disarm_system()
+        else:
+            logger.warning("Got weird message: '"+message+"'")
+
     def getSensorStates(self):
         self.mutex.acquire()
         ss = self.sensor_states
@@ -149,12 +180,16 @@ class Security_Thread(thread_base.AS_Thread):
         html = ""
         
         if self.isInitialized():
-            
+
+            arm_button_text = self.security_state.get_state_string()
+            arm_button_color = "btn-warning" if arm_button_text == "DISARMED" else "btn-success"
+
             html = """
                 <div id="security" class="jumbotron">
                     <div class="row">
                         <div class="col-md-12">
                             <h2>Security:</h2>
+                            <button name="arm_btn" type="button" class="%s" onclick="armSystem()">%s</button>
                             <table class="table table-condensed">
                                 <thead>
                                     <tr>
@@ -175,7 +210,7 @@ class Security_Thread(thread_base.AS_Thread):
                         </div>
                     </div>
                 </div>
-            """ % self.getSensorStates()
+            """ % (arm_button_color, arm_button_text, self.getSensorStates())
         
         return html
     
@@ -189,8 +224,53 @@ class Security_Thread(thread_base.AS_Thread):
                     %s
                 }
                 ready_function_array.push( drawSecurityData )
+
+
+                function armSystem()
+                {
+                    var command = "";
+
+                    if ( $("button[name='arm_btn']").hasClass("btn-success") )
+                    {
+                        command = "disarm"
+                    }
+                    else if ( $("button[name='arm_btn']").hasClass("btn-warning") )
+                    {
+                        command = "arm"
+                    }
+
+                    $.get("cgi-bin/web_control.py?set_alarm="+command, function (result)
+                    {
+                        var btn = $("button[name='arm_btn']")
+
+                        if (result.trim() == "ARMED")
+                        {
+                            btn.removeClass();
+                            btn.addClass('btn-success');
+                        }
+                        else if (result.trim() == "DISARMED")
+                        {
+                            btn.removeClass();
+                            btn.addClass('btn-warning');
+                        }
+                        else
+                        {
+                            btn.toggleClass('btn-primary');
+                            btn.toggleClass('btn-danger');
+                            alert(result);
+                            setTimeout(function()
+                            {
+                                btn.toggleClass('btn-danger');
+                                btn.toggleClass('btn-primary');
+                            }, 5000);
+                        }
+                    });
+                }
                 
-            """ % self.data_logger.get_google_timeline_javascript("Security State", "Zone","security_chart_div", "height: 340")
+            """ % self.data_logger.get_google_timeline_javascript("Security State",
+                                                                  "Zone",
+                                                                  "security_chart_div",
+                                                                  "height: 340")
         
         return jscript
     
@@ -219,7 +299,7 @@ class Security_Thread(thread_base.AS_Thread):
         #
         # Process the message
         #
-        if msg != None:
+        if msg is not None:
             
             # ( ( ip_address, port ), message )
             ( _, state_str ) = msg
@@ -300,19 +380,6 @@ if __name__ == "__main__":
     print "Collecting data (1 minute)..."
     time.sleep(60)
     
-    #print sec.get_history()
+    # print sec.get_history()
     
     sec.stop()
-
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            

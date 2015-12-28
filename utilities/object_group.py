@@ -17,6 +17,7 @@ logger = logging.getLogger('allspark.object_group')
 
 CONFIG_SEC_NAME = "general"
 
+
 class Object_Group():
     def __init__(self, config):
         self._initialized = False
@@ -30,7 +31,7 @@ class Object_Group():
         
         spark_auth_filename = \
             config_utils.get_config_param( config, CONFIG_SEC_NAME, "spark_auth_file")
-        if spark_auth_filename == None:
+        if spark_auth_filename is None:
             return
         
         self.spark = spark_interface.Spark_Interface(self, spark_auth_filename)
@@ -39,7 +40,6 @@ class Object_Group():
             logger.error( "Failed to create spark interface" )
             return
 
-        
         ############################################################################
         # Temperature Thread
         ############################################################################
@@ -48,7 +48,6 @@ class Object_Group():
         if not self.thermostat.isInitialized():
             logger.error( "Failed to create temperature thread" )
             return
-
 
         ############################################################################
         # User Thread
@@ -59,7 +58,6 @@ class Object_Group():
             logger.error( "Failed to create user thread" )
             return
 
-
         ############################################################################
         # Memory Thread
         ############################################################################
@@ -68,7 +66,6 @@ class Object_Group():
         if not self.mem.isInitialized():
             logger.error( "Failed to create memory thread" )
             return
-
 
         ############################################################################
         # Furnace Control Thread
@@ -107,7 +104,9 @@ class Object_Group():
         if not self.security.isInitialized():
             logger.error( "Failed to create security thread" )
             return
-        
+
+        self.comms.register_callback("alarm", self.security.parse_alarm_control_message)
+
         ############################################################################
         # Twilio
         ############################################################################
@@ -131,8 +130,7 @@ class Object_Group():
             logger.error( "Failed to create energy monitor" )
         
         self._initialized = True
-        
-        
+
     def start(self):
         if self._initialized and not self._running:
             self.thermostat.start()
@@ -143,7 +141,6 @@ class Object_Group():
             self.security.start()
             self.energy.start()
             self._running = True
-
 
     def stop(self):
         if self._initialized and self._running:
@@ -184,6 +181,3 @@ class Object_Group():
         config = memory_thread.Memory_Thread.get_template_config(config)
         config = energy_thread.Energy_Thread.get_template_config(config)
         return config
-        
-        
-        

@@ -221,7 +221,7 @@ class Set_Point():
         {
             var set_point = $("input[name='"+device+"']").val()
             
-            $.get("cgi-bin/set_temp.py?set_temp="+set_point+"&floor="+device, function (result)
+            $.get("cgi-bin/web_control.py?set_temp="+set_point+"&floor="+device, function (result)
             { 
                 if (result.trim() == "OK")
                 {
