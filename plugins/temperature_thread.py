@@ -82,8 +82,8 @@ class TemperatureThread(thread_base.ASThread):
         count = 0
         for device in self.device_names:
           
-            device_temp = self.og.spark.getVariable(device, "temperature")
-          
+            device_temp = self.og.spark.get_variable(device, "temperature")
+            
             try:
                 x += float(device_temp)
                 self.current_temps[device] = float(device_temp)

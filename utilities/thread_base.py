@@ -2,6 +2,7 @@
 
 import sys
 import traceback
+import time
 import logging
 from threading import Thread, Lock
 
@@ -53,7 +54,8 @@ class ASThread(Thread):
                 self.private_run()
             except Exception as e:
                 tb = "".join( traceback.format_tb(sys.exc_info()[2]) )
-                self.logger.error( "exception occured in " + self.name + " thread: \n" + tb + "\n" + str( e ) ) 
+                self.logger.error( "exception occured in " + self.name + " thread: \n" + tb + "\n" + str( e ) )
+                time.sleep(5)
         
         self.private_run_cleanup()
         
