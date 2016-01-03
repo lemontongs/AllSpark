@@ -13,14 +13,27 @@ class UDPSocket(ASThread):
         
         self.address = address
         if self.address is None:
+            self.logger.error("Address is None")
             return
         
-        if rx_port is None or tx_port is None:
+        if rx_port is None:
+            self.logger.error("rx_port is None")
             return
+        
+        if tx_port is None:
+            self.logger.error("tx_port is None")
+            return
+        
         try:
             self.rx_port = int(rx_port)
+        except ValueError:
+            self.logger.error("invalid rx_port: " + str(rx_port) )
+            return
+        
+        try:
             self.tx_port = int(tx_port)
         except ValueError:
+            self.logger.error("invalid tx_port: " + str(tx_port) )
             return
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)

@@ -20,7 +20,7 @@ class CommsThread(Thread):
             self.context = zmq.Context()
             self.socket = self.context.socket(zmq.PAIR)
             self.socket.bind("tcp://*:" + str(self.port))
-        except:
+        except zmq.ZMQBaseError:
             logger.error( "Failed to start comms thread: " + repr(sys.exc_info()) )
             return
         

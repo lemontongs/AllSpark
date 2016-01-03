@@ -73,7 +73,7 @@ def check_permissions(filename):
         remove_file(filename)
         f = open(filename, "w+")
         f.close()
-    except:
+    except (OSError, IOError):
         print "check_permissions() got error:", sys.exc_info(), " on file:", filename
         sys.exit(1)
 

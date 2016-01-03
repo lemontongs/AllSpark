@@ -124,7 +124,7 @@ class SparkInterface:
                 else:
                     logger.warning( "getVariable: Could not get '" + variable + "' from '" + device_name +
                                     "': " + r.reason )
-            except:
+            except requests.exceptions.RequestException:
                 pass
             
             self.mutex.release()

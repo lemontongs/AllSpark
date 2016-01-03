@@ -44,12 +44,14 @@ class SecurityState:
         if self._state == self._DISARMED:
             self._state = self._ARMED
             logger.info("SYSTEM ARMED")
+            self.og.broadcast.send("security:armed")
 
     def disarm_system(self):
         if self._state != self._DISARMED:
             self._state = self._DISARMED
             self.triggered_zones = []
             logger.info("SYSTEM DISARMED")
+            self.og.broadcast.send("security:disarmed")
 
     def clear(self):
         if self._state >= self._TRIGGERED:
@@ -66,14 +68,24 @@ class SecurityState:
             if zone not in self.triggered_zones:
                 self.triggered_zones.append(zone)
         
-    def should_alarm(self):
+    def sound_alarm(self):
+        # Things that happen only once
         if self._state == self._TRIGGERED:
             if time.time() - self._trigger_time > self.delay:
                 self._state = self._ALARM
                 logger.debug("security_state.alarm")
-                return True
-        
-        return False
+
+                status = "\nSECURITY BREACH!"
+                for zone in self.security_state.triggered_zones:
+                    status += "\n" + zone
+
+                logger.info(status)
+                self.og.twilio.sendSMS(status, self.breach_number)
+                self.og.broadcast.send("security:" + status)
+
+        # Things that repeat until disarmed
+        if self._state == self._ALARM:
+            self.og.broadcast.send("security:alarming")
 
 
 class SecurityThread(thread_base.ASThread):
@@ -292,23 +304,19 @@ class SecurityThread(thread_base.ASThread):
         msg = self.udp.get( timeout = self.collect_period )
         
         #
-        # Clear the security state
+        # Manage the security state
         #
         if self.og.user_thread.someone_is_present():
             self.security_state.clear()
             self.security_state.disarm_system()
+        else:
+            self.security_state.arm_system()
         
         #
-        # Check to see if we should sound the alarm!!!
+        # Sound the alarm if applicable
         #
-        if self.security_state.should_alarm():
-            status = "\nSECURITY BREACH!"
-            for zone in self.security_state.triggered_zones:
-                status += "\n" + zone
-            
-            logger.info(status)
-            self.og.twilio.sendSMS(status, self.breach_number)
-    
+        self.security_state.sound_alarm()
+
         #
         # Process the message
         #
@@ -381,8 +389,13 @@ class SecurityThread(thread_base.ASThread):
         
         
 if __name__ == "__main__":
-    
-    sec = SecurityThread( None, None )
+    import ConfigParser
+
+    conf = ConfigParser.ConfigParser()
+
+    SecurityThread.get_template_config( conf )
+
+    sec = SecurityThread( None, conf )
     
     if not sec.is_initialized():
         print "ERROR: initialization failed"

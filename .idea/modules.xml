@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/AllSpark.iml" filepath="$PROJECT_DIR$/.idea/AllSpark.iml" />
+      <module fileurl="file://$USER_HOME$/workspace/notifyer/.idea/notifyer.iml" filepath="$USER_HOME$/workspace/notifyer/.idea/notifyer.iml" />
     </modules>
   </component>
 </project>

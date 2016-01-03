@@ -16,7 +16,7 @@ def send_message(msg):
         socket.setsockopt(zmq.LINGER, 2000)
         socket.connect("tcp://localhost:5555")
         socket.send(msg)
-    except:
+    except zmq.ZMQBaseError:
         print sys.exc_info()
 
 
@@ -34,9 +34,11 @@ def arm_alarm():
 
 # print header
 print "Content-type: text/html\n\n"
-
 form = cgi.FieldStorage()
 
+#
+# Furnace set point control
+#
 if ('set_temp' in form) and ('floor' in form):
     try:
         set_point = float(form['set_temp'].value)
@@ -51,23 +53,23 @@ if ('set_temp' in form) and ('floor' in form):
         else:
             print "OK"
             send_temperature(set_point, floor)
-    except:
+    except ValueError:
         print "bad temp", sys.exc_info()
 
+#
+# Security arm/disarm control
+#
 elif 'set_alarm' in form:
-    try:
-        command = form['set_alarm'].value
+    command = form['set_alarm'].value
 
-        if command == "arm":
-            print "ARMED"
-            arm_alarm()
-        elif command == "disarm":
-            print "DISARMED"
-            disarm_alarm()
-        else:
-            print "INVALID"
-    except:
-        print "INVALID", sys.exc_info()
+    if command == "arm":
+        print "ARMED"
+        arm_alarm()
+    elif command == "disarm":
+        print "DISARMED"
+        disarm_alarm()
+    else:
+        print "INVALID"
 
 else:
     print "INVALID"

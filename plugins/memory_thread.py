@@ -95,8 +95,13 @@ class MemoryThread(thread_base.ASThread):
     
             
 if __name__ == "__main__":
-    
-    mem = MemoryThread( None, None )
+    import ConfigParser
+
+    conf = ConfigParser.ConfigParser()
+
+    MemoryThread.get_template_config( conf )
+
+    mem = MemoryThread( None, conf )
     
     if not mem.is_initialized():
         print "ERROR: initialization failed"
