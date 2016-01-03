@@ -131,7 +131,7 @@ if not os.path.exists(data_directory):
 
 check_permissions(html_filename)
 
-if logging.getLevelName(log_level).startswith("Level "):
+if type(logging.getLevelName(log_level)) is str:
     print "WARNING: Invalid log level detected '" + log_level + "'. Using DEBUG log level."
     log_level = "DEBUG"
 
