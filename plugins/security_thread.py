@@ -31,8 +31,9 @@ class SecurityState:
     _trigger_time = time.time()
     triggered_zones = []
     
-    def __init__(self, delay = 30):  # number of seconds to wait before alarming
+    def __init__(self, object_group, delay = 30):  # number of seconds to wait before alarming
         self.delay = delay
+        self.og = object_group
 
     def get_state(self):
         return self._state
@@ -153,7 +154,7 @@ class SecurityThread(thread_base.ASThread):
             return
         self.udp.start()
         
-        self.security_state = SecurityState()
+        self.security_state = SecurityState(object_group=self.og)
         
         self.sensor_states = ""
         self._initialized = True
