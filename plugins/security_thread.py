@@ -1,18 +1,15 @@
 
 import time
-import logging
 from threading import Lock
 from utilities import udp_interface
 from utilities.data_logging import presence_logger
 from utilities import config_utils
-from utilities import thread_base
+from utilities.thread_base import ThreadedPlugin
 
 OPEN   = '0'
 CLOSED = '1'
 
-CONFIG_SEC_NAME = "security_thread"
-
-logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+PLUGIN_NAME = "security_thread"
 
 
 class SecurityState:
@@ -31,9 +28,11 @@ class SecurityState:
     _trigger_time = time.time()
     triggered_zones = []
     
-    def __init__(self, object_group, delay = 30):  # number of seconds to wait before alarming
+    def __init__(self, object_group, logger, breach_number, delay = 30):  # number of seconds to wait before alarming
         self.delay = delay
         self.og = object_group
+        self.logger = logger
+        self.breach_number = breach_number
 
     def get_state(self):
         return self._state
@@ -44,23 +43,23 @@ class SecurityState:
     def arm_system(self):
         if self._state == self._DISARMED:
             self._state = self._ARMED
-            logger.info("SYSTEM ARMED")
+            self.logger.info("SYSTEM ARMED")
             self.og.broadcast.send("security:armed")
 
     def disarm_system(self):
         if self._state != self._DISARMED:
             self._state = self._DISARMED
             self.triggered_zones = []
-            logger.info("SYSTEM DISARMED")
+            self.logger.info("SYSTEM DISARMED")
             self.og.broadcast.send("security:disarmed")
 
     def clear(self):
         if self._state >= self._TRIGGERED:
-            logger.debug("security_state.clear")
+            self.logger.debug("security_state.clear")
             self._state = self._ARMED
         
     def trigger(self, zone):
-        logger.debug( "security_state.trigger (zone = %s)" % zone )
+        self.logger.debug( "security_state.trigger (zone = %s)" % zone )
         if self._state == self._ARMED:
             self._state = self._TRIGGERED
             self._trigger_time = time.time()
@@ -74,13 +73,13 @@ class SecurityState:
         if self._state == self._TRIGGERED:
             if time.time() - self._trigger_time > self.delay:
                 self._state = self._ALARM
-                logger.debug("security_state.alarm")
+                self.logger.debug("security_state.alarm")
 
                 status = "\nSECURITY BREACH!"
-                for zone in self.security_state.triggered_zones:
+                for zone in self.triggered_zones:
                     status += "\n" + zone
 
-                logger.info(status)
+                self.logger.info(status)
                 self.og.twilio.sendSMS(status, self.breach_number)
                 self.og.broadcast.send("security:" + status)
 
@@ -89,38 +88,42 @@ class SecurityState:
             self.og.broadcast.send("security:alarming")
 
 
-class SecurityThread(thread_base.ASThread):
+class SecurityPlugin(ThreadedPlugin):
+
+    @staticmethod
+    def get_dependencies():
+        return ['UserMonitorPlugin']
+
     def __init__(self, object_group, config):
-        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
-        
-        self.og = object_group
+        ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
+
         self.mutex = Lock()
         
-        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+        if not self.enabled:
             return
 
-        self.monitor_device_name = config_utils.get_config_param( config, CONFIG_SEC_NAME, "monitor_device_name")
+        self.monitor_device_name = config_utils.get_config_param(config, PLUGIN_NAME, "monitor_device_name", self.logger)
         if self.monitor_device_name is None:
             return
 
-        self.breach_number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "breach_number")
+        self.breach_number = config_utils.get_config_param(config, PLUGIN_NAME, "breach_number", self.logger)
         if self.breach_number is None:
             return
 
-        self.num_zones = config_utils.get_config_param( config, CONFIG_SEC_NAME, "num_zones")
+        self.num_zones = config_utils.get_config_param(config, PLUGIN_NAME, "num_zones", self.logger)
         if self.num_zones is None:
             return
         self.num_zones = int( self.num_zones )
 
-        data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
         if data_directory is None:
             return
 
-        address = config_utils.get_config_param( config, CONFIG_SEC_NAME, "address")
+        address = config_utils.get_config_param(config, PLUGIN_NAME, "address", self.logger)
         if address is None:
             return
 
-        port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "port")
+        port = config_utils.get_config_param(config, PLUGIN_NAME, "port", self.logger)
         if port is None:
             return
         
@@ -130,48 +133,50 @@ class SecurityThread(thread_base.ASThread):
         for zone in range(self.num_zones):
             zone_index = "zone_" + str(zone)
             
-            if zone_index not in config.options(CONFIG_SEC_NAME):
-                print zone_index + " property missing from " + CONFIG_SEC_NAME + " section"
+            if zone_index not in config.options(PLUGIN_NAME):
+                print zone_index + " property missing from " + PLUGIN_NAME + " section"
                 return
                 
-            self.zones.append( { 'last': time.localtime(),
-                                 'state': CLOSED,
-                                 'name': config.get(CONFIG_SEC_NAME, zone_index)} )
+            self.zones.append({ 'last': time.localtime(),
+                                'state': CLOSED,
+                                'name': config.get(PLUGIN_NAME, zone_index)})
             
-            zone_names.append( config.get(CONFIG_SEC_NAME, zone_index) )
+            zone_names.append(config.get(PLUGIN_NAME, zone_index))
 
-        if "collect_period" not in config.options(CONFIG_SEC_NAME):
+        if "collect_period" not in config.options(PLUGIN_NAME):
             self.collect_period = 10
         else:
-            self.collect_period = float(config.get(CONFIG_SEC_NAME, "collect_period", True))
+            self.collect_period = float(config.get(PLUGIN_NAME, "collect_period", True))
         
         # Setup data data_logger
         self.data_logger = presence_logger.PresenceLogger(data_directory, "security", zone_names)
         
         # Setup UDP interface
-        self.udp = udp_interface.UDPSocket( address, port, port, CONFIG_SEC_NAME + "_inf" )
+        self.udp = udp_interface.UDPSocket(address, port, port, PLUGIN_NAME + "_inf")
         if not self.udp.is_initialized():
             return
         self.udp.start()
         
-        self.security_state = SecurityState(object_group=self.og)
+        self.security_state = SecurityState(object_group=self.og,
+                                            logger=self.logger,
+                                            breach_number=self.breach_number)
         
         self.sensor_states = ""
         self._initialized = True
     
     @staticmethod
     def get_template_config(config):
-        config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME, "temp_data_dir", "data")
-        config.set(CONFIG_SEC_NAME, "data_directory", "%(temp_data_dir)s/security_data")
-        config.set(CONFIG_SEC_NAME, "breach_number", "+15551231234")
-        config.set(CONFIG_SEC_NAME, "monitor_device_name", "<particle security device name>")
-        config.set(CONFIG_SEC_NAME, "num_zones", "5")
-        config.set(CONFIG_SEC_NAME, "zone_0", "<zone 0 name>")
-        config.set(CONFIG_SEC_NAME, "zone_1", "<zone 1 name>")
-        config.set(CONFIG_SEC_NAME, "zone_2", "<zone 2 name>")
-        config.set(CONFIG_SEC_NAME, "zone_3", "<zone 3 name>")
-        config.set(CONFIG_SEC_NAME, "zone_4", "<zone 4 name>")
+        config.add_section(PLUGIN_NAME)
+        config.set(PLUGIN_NAME, "temp_data_dir", "data")
+        config.set(PLUGIN_NAME, "data_directory", "%(temp_data_dir)s/security_data")
+        config.set(PLUGIN_NAME, "breach_number", "+15551231234")
+        config.set(PLUGIN_NAME, "monitor_device_name", "<particle security device name>")
+        config.set(PLUGIN_NAME, "num_zones", "5")
+        config.set(PLUGIN_NAME, "zone_0", "<zone 0 name>")
+        config.set(PLUGIN_NAME, "zone_1", "<zone 1 name>")
+        config.set(PLUGIN_NAME, "zone_2", "<zone 2 name>")
+        config.set(PLUGIN_NAME, "zone_3", "<zone 3 name>")
+        config.set(PLUGIN_NAME, "zone_4", "<zone 4 name>")
 
     def parse_alarm_control_message(self, message):
         fields = message.split(",")
@@ -180,7 +185,7 @@ class SecurityThread(thread_base.ASThread):
         elif len(fields) == 2 and fields[1] == "disarm":
             self.security_state.disarm_system()
         else:
-            logger.warning("Got weird message: '" + message + "'")
+            self.logger.warning("Got weird message: '" + message + "'")
 
     def get_sensor_states(self):
         self.mutex.acquire()
@@ -300,7 +305,7 @@ class SecurityThread(thread_base.ASThread):
         return jscript
     
     def private_run(self):
-        logger.info( "Waiting for message" )
+        self.logger.info( "Waiting for message" )
         
         msg = self.udp.get( timeout = self.collect_period )
         
@@ -327,10 +332,10 @@ class SecurityThread(thread_base.ASThread):
             (_, state_str) = msg
             
             if len(state_str) != self.num_zones:
-                logger.warning("Skipping invalid message!")
+                self.logger.warning("Skipping invalid message!")
                 return
             
-            logger.info("Got message: " + state_str)
+            self.logger.info("Got message: " + state_str)
             
             self.mutex.acquire()
             try:
@@ -394,9 +399,9 @@ if __name__ == "__main__":
 
     conf = ConfigParser.ConfigParser()
 
-    SecurityThread.get_template_config( conf )
+    SecurityPlugin.get_template_config(conf)
 
-    sec = SecurityThread( None, conf )
+    sec = SecurityPlugin(None, conf)
     
     if not sec.is_initialized():
         print "ERROR: initialization failed"

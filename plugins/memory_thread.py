@@ -1,36 +1,36 @@
 
 import time
 import psutil
-import logging
 from threading import Lock
-from utilities import thread_base
+from utilities.thread_base import ThreadedPlugin
 from utilities import config_utils
 from utilities.data_logging import value_logger
 
-CONFIG_SEC_NAME = "memory_thread"
-
-logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+PLUGIN_NAME = "memory_thread"
 
 
-class MemoryThread(thread_base.ASThread):
+class MemoryMonitorPlugin(ThreadedPlugin):
+
+    @staticmethod
+    def get_dependencies():
+        return []
+
     def __init__(self, object_group, config):
-        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
-        
-        self.og = object_group
-        
+        ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
+
         self.mutex = Lock()
         
-        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+        if not self.enabled:
             return
 
-        self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
         if self.data_directory is None:
             return
 
-        if "collect_period" not in config.options( CONFIG_SEC_NAME ):
+        if "collect_period" not in config.options(PLUGIN_NAME):
             self.collect_period = 60
         else:
-            self.collect_period = float(config.get( CONFIG_SEC_NAME, "collect_period", True ) )
+            self.collect_period = float(config.get(PLUGIN_NAME, "collect_period", True))
         
         self.data_logger = value_logger.ValueLogger(self.data_directory, "memory", "Percent Used")
         
@@ -38,16 +38,16 @@ class MemoryThread(thread_base.ASThread):
     
     @staticmethod
     def get_template_config(config):
-        config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME, "temp_data_dir", "data")
-        config.set(CONFIG_SEC_NAME, "data_directory", "%(temp_data_dir)s/memory_data")
+        config.add_section(PLUGIN_NAME)
+        config.set(PLUGIN_NAME, "temp_data_dir", "data")
+        config.set(PLUGIN_NAME, "data_directory", "%(temp_data_dir)s/memory_data")
         
     def private_run(self):
         
         percent_used = psutil.phymem_usage().percent
         
         self.data_logger.add_data( [ str(percent_used) ] )
-        logger.debug("Got:" + str(percent_used) )
+        self.logger.debug("Got:" + str(percent_used) )
         
         for _ in range(self.collect_period):
             if self._running:
@@ -99,9 +99,9 @@ if __name__ == "__main__":
 
     conf = ConfigParser.ConfigParser()
 
-    MemoryThread.get_template_config( conf )
+    MemoryMonitorPlugin.get_template_config(conf)
 
-    mem = MemoryThread( None, conf )
+    mem = MemoryMonitorPlugin(None, conf)
     
     if not mem.is_initialized():
         print "ERROR: initialization failed"

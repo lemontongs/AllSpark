@@ -1,3 +1,4 @@
+
 import copy
 import os
 import time
@@ -11,45 +12,48 @@ import shlex
 from datetime import datetime
 from threading import Lock, Thread
 from utilities import config_utils
-from utilities import thread_base
+from utilities.thread_base import ThreadedPlugin
 from utilities.data_logging import value_logger
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 AMR_ARGS = " -msgtype=idm -format=json -decimation=8 "
 
-CONFIG_SEC_NAME = "energy_thread"
-
-logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+PLUGIN_NAME = "energy_thread"
 
 
-class EnergyThread(thread_base.ASThread):
+class EnergyMonitorPlugin(ThreadedPlugin):
+
+    @staticmethod
+    def get_dependencies():
+        return []
+
     def __init__(self, object_group, config):
-        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
-        
-        self.og = object_group
+        ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
+
         self.mutex = Lock()
-        
-        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+
+        if not self.enabled:
             return
 
-        self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
         if self.data_directory is None:
             return
 
-        rtl_exe = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_tcp_exe")
+        rtl_exe = config_utils.get_config_param(config, PLUGIN_NAME, "rtl_tcp_exe", self.logger)
         if rtl_exe is None or not os.path.isfile(rtl_exe):
             return
 
-        rtl_ppm = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_ppm")
+        rtl_ppm = config_utils.get_config_param(config, PLUGIN_NAME, "rtl_ppm", self.logger)
         rtl_ppm_args = ""
         if rtl_ppm:
             rtl_ppm_args = " -freqcorrection=" + rtl_ppm
         
-        amr_exe = config_utils.get_config_param( config, CONFIG_SEC_NAME, "rtl_amr_exe")
+        amr_exe = config_utils.get_config_param(config, PLUGIN_NAME, "rtl_amr_exe", self.logger)
         if amr_exe is None or not os.path.isfile(amr_exe):
             return
 
-        self.meter_serial_number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "meter_serial_number")
+        self.meter_serial_number = \
+            config_utils.get_config_param(config, PLUGIN_NAME, "meter_serial_number", self.logger)
         if self.meter_serial_number is None:
             return
         self.meter_serial_number = int( self.meter_serial_number )
@@ -58,7 +62,7 @@ class EnergyThread(thread_base.ASThread):
         #
         # start rtl_tcp
         #
-        logger.debug( "RTL_TCP commmand: " + rtl_exe )
+        self.logger.debug( "RTL_TCP commmand: " + rtl_exe )
         self.rtl_handle = subprocess.Popen(shlex.split(rtl_exe), 
                                            stdout=subprocess.PIPE, 
                                            stderr=subprocess.STDOUT, 
@@ -68,7 +72,7 @@ class EnergyThread(thread_base.ASThread):
         time.sleep(5)
         
         # start rtlamr with a thread that fills the queue with each line of output
-        logger.debug( "RTL_AMR commmand: " + amr_exe + AMR_ARGS + rtl_ppm_args + filter_args )
+        self.logger.debug( "RTL_AMR commmand: " + amr_exe + AMR_ARGS + rtl_ppm_args + filter_args )
         self.amr_handle = subprocess.Popen(shlex.split(amr_exe + AMR_ARGS + rtl_ppm_args + filter_args), 
                                            stdout=subprocess.PIPE, 
                                            stderr=subprocess.STDOUT, 
@@ -93,11 +97,11 @@ class EnergyThread(thread_base.ASThread):
         time.sleep(5)
 
         if self.rtl_handle.returncode is not None:
-            logger.warning( "RTL_TCP exited with code:", str(self.rtl_handle.returncode) ) 
+            self.logger.warning( "RTL_TCP exited with code:", str(self.rtl_handle.returncode) )
             return
             
         if self.amr_handle.returncode is not None:
-            logger.warning( "RTL_AMR exited with code:", str(self.amr_handle.returncode) ) 
+            self.logger.warning( "RTL_AMR exited with code:", str(self.amr_handle.returncode) )
             return
         
         self._initialized = True
@@ -105,12 +109,12 @@ class EnergyThread(thread_base.ASThread):
     def private_run(self):
         if self.is_initialized():
             if self.rtl_handle.returncode is not None:
-                logger.warning( "RTL_TCP exited with code: " + str(self.rtl_handle.returncode) )
+                self.logger.warning( "RTL_TCP exited with code: " + str(self.rtl_handle.returncode) )
                 self._running = False
                 return
                 
             if self.amr_handle.returncode is not None:
-                logger.warning( "RTL_AMR exited with code: " + str(self.amr_handle.returncode) )
+                self.logger.warning( "RTL_AMR exited with code: " + str(self.amr_handle.returncode) )
                 self._running = False
                 return
             
@@ -121,7 +125,7 @@ class EnergyThread(thread_base.ASThread):
                 pass
             else:  # got line
                 try:
-                    logger.debug( "Got line: " + line )
+                    self.logger.debug( "Got line: " + line )
                     
                     packet = json.loads(line)
                     
@@ -140,10 +144,10 @@ class EnergyThread(thread_base.ASThread):
                             self.data_logger.add_data([str(consumption)])
                             
                         else:
-                            logger.debug( "NO MATCH" )
+                            self.logger.debug( "NO MATCH" )
                         
                 except ValueError:
-                    logger.debug( "Error parsing json" )
+                    self.logger.debug( "Error parsing json" )
                             
                 for _ in range(1):
                     if self._running:
@@ -153,20 +157,20 @@ class EnergyThread(thread_base.ASThread):
         if self.is_initialized():
             
             if self.rtl_handle.returncode is None:
-                logger.info( "killing: " + str(self.amr_handle.pid) )
+                self.logger.info( "killing: " + str(self.amr_handle.pid) )
                 os.kill(self.amr_handle.pid, signal.SIGKILL)
                 
             if self.amr_handle.returncode is None:
-                logger.info( "killing: " + str(self.rtl_handle.pid) )
+                self.logger.info( "killing: " + str(self.rtl_handle.pid) )
                 os.kill(self.rtl_handle.pid, signal.SIGKILL)
 
     @staticmethod
     def get_template_config(config):
-        config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME, "rtl_tcp_exe", "/<path>/<to>/rtl_tcp")
-        config.set(CONFIG_SEC_NAME, "rtl_ppm", "0")
-        config.set(CONFIG_SEC_NAME, "rtl_amr_exe", "/<path>/<to>/rtlamr")
-        config.set(CONFIG_SEC_NAME, "meter_serial_number", "5555555555")
+        config.add_section(PLUGIN_NAME)
+        config.set(PLUGIN_NAME, "rtl_tcp_exe", "/<path>/<to>/rtl_tcp")
+        config.set(PLUGIN_NAME, "rtl_ppm", "0")
+        config.set(PLUGIN_NAME, "rtl_amr_exe", "/<path>/<to>/rtlamr")
+        config.set(PLUGIN_NAME, "meter_serial_number", "5555555555")
         
     def get_html(self):
         if self.is_initialized():
@@ -266,16 +270,16 @@ if __name__ == "__main__":
     console.setLevel(logging.DEBUG)
     format_str = '%(asctime)s %(name)-30s %(levelname)-8s %(message)s'
     console.setFormatter(logging.Formatter(format_str))
-    logger.addHandler(console)
+    logging.getLogger("AllSPark." + PLUGIN_NAME).addHandler(console)
     
     conf = ConfigParser()
-    conf.add_section(CONFIG_SEC_NAME)
-    conf.set(CONFIG_SEC_NAME, "rtl_tcp_exe", "/usr/local/bin/rtl_tcp")
-    conf.set(CONFIG_SEC_NAME, "rtl_ppm", "51")
-    conf.set(CONFIG_SEC_NAME, "rtl_amr_exe", "/home/mlamonta/git/rtlamr/bin/rtlamr")
-    conf.set(CONFIG_SEC_NAME, "meter_serial_number", "69148036")
+    conf.add_section(PLUGIN_NAME)
+    conf.set(PLUGIN_NAME, "rtl_tcp_exe", "/usr/local/bin/rtl_tcp")
+    conf.set(PLUGIN_NAME, "rtl_ppm", "51")
+    conf.set(PLUGIN_NAME, "rtl_amr_exe", "/home/mlamonta/git/rtlamr/bin/rtlamr")
+    conf.set(PLUGIN_NAME, "meter_serial_number", "69148036")
     
-    eng = EnergyThread(1, conf)
+    eng = EnergyMonitorPlugin(1, conf)
     
     if not eng.is_initialized():
         print "ERROR: initialization failed"

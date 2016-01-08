@@ -2,7 +2,7 @@ import os
 import time
 import logging
 from threading import Lock
-from utilities import thread_base
+from utilities.thread_base import ThreadedPlugin
 from utilities import config_utils
 from utilities import graphite_logging
 from utilities.data_logging import value_logger
@@ -17,25 +17,28 @@ from utilities.data_logging import value_logger
 #    t1.start()
 #
 
-CONFIG_SEC_NAME = "temperature_thread"
+PLUGIN_NAME = "thermostat_plugin"
 
-logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+logger = logging.getLogger('allspark.' + PLUGIN_NAME)
 
 
-class TemperatureThread(thread_base.ASThread):
+class TemperatureMonitorPlugin(ThreadedPlugin):
+
+    @staticmethod
+    def get_dependencies():
+        return []
+
     def __init__(self, object_group, config):
-        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
-        
-        self.og = object_group
-        
+        ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
+
         self.mutex = Lock()
         
         self.current_temps = {}
         
-        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+        if not self.enabled:
             return
 
-        self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
         if self.data_directory is None:
             return
 
@@ -55,10 +58,10 @@ class TemperatureThread(thread_base.ASThread):
 
     @staticmethod
     def get_template_config(config):
-        config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME, "data_directory", "data")
-        config.set(CONFIG_SEC_NAME, "temp_data_dir", "%(data_directory)s/temperature_data")
-        config.set(CONFIG_SEC_NAME, "data_file", "%(temp_data_dir)s/today.csv")
+        config.add_section(PLUGIN_NAME)
+        config.set(PLUGIN_NAME, "data_directory", "data")
+        config.set(PLUGIN_NAME, "temp_data_dir", "%(data_directory)s/temperature_data")
+        config.set(PLUGIN_NAME, "data_file", "%(temp_data_dir)s/today.csv")
     
     def get_device_names(self):
         if not self._initialized:

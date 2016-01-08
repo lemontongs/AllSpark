@@ -1,88 +1,58 @@
 
-from plugins import temperature_thread
-from plugins import user_thread
-from plugins import memory_thread
-from plugins import furnace_control
-from plugins import security_thread
-from plugins import set_point
-from plugins import energy_thread
+import os
+import logging
+import traceback
+
+import config_utils
+import dynamic_module_load
+
+# Helper plugins
 import comms_thread
 import spark_interface
 import twilio_interface
 import message_broadcast
-import config_utils
-import logging
 
 logger = logging.getLogger('allspark.object_group')
 
 CONFIG_SEC_NAME = "general"
+
+THIS_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PLUGINS_DIR = os.path.join( THIS_SCRIPT_DIR, "..", "plugins" )
+
+plugin_dir_classes = dynamic_module_load.get_classes_from_folder(PLUGINS_DIR)
+plugin_classes = []
+
+# Create a list of classes that have a name ending with "Plugin"
+for (class_name, class_instance) in plugin_dir_classes:
+    if class_name.endswith("Plugin"):
+        plugin_classes.append( (class_name, class_instance) )
 
 
 class ObjectGroup:
     def __init__(self, config):
         self._initialized = False
         self._running = False
-        
+
+        self._plugins = []
+
+        # Load helper objects
+        # TODO: remove this somehow, possibly make them plugins also?
+
         ############################################################################
         # Spark Interface
         ############################################################################
         if not config_utils.check_config_section(config, CONFIG_SEC_NAME):
             return
-        
+
         spark_auth_filename = \
-            config_utils.get_config_param( config, CONFIG_SEC_NAME, "spark_auth_file")
+            config_utils.get_config_param( config, CONFIG_SEC_NAME, "spark_auth_file", logger)
         if spark_auth_filename is None:
             return
-        
-        self.spark = spark_interface.SparkInterface(self, spark_auth_filename)
-        
+
+        self.spark = spark_interface.SparkInterface(spark_auth_filename)
+
         if not self.spark.is_initialized():
             logger.error( "Failed to create spark interface" )
-            return
-
-        ############################################################################
-        # Temperature Thread
-        ############################################################################
-        self.thermostat = temperature_thread.TemperatureThread(self, config = config)
-
-        if not self.thermostat.is_initialized():
-            logger.error( "Failed to create temperature thread" )
-            return
-
-        ############################################################################
-        # User Thread
-        ############################################################################
-        self.user_thread = user_thread.UserThread(self, config = config)
-
-        if not self.user_thread.is_initialized():
-            logger.error( "Failed to create user thread" )
-            return
-
-        ############################################################################
-        # Memory Thread
-        ############################################################################
-        self.mem = memory_thread.MemoryThread(self, config = config)
-
-        if not self.mem.is_initialized():
-            logger.error( "Failed to create memory thread" )
-            return
-
-        ############################################################################
-        # Furnace Control Thread
-        ############################################################################
-        self.furnace_ctrl = furnace_control.FurnaceControl(self, config = config)
-
-        if not self.furnace_ctrl.is_initialized():
-            logger.error( "Failed to create furnace controller" )
-            return
-
-        ############################################################################
-        # Furnace Set Point Object
-        ############################################################################
-        self.set_point = set_point.SetPoint(self, config = config)
-
-        if not self.set_point.is_initialized():
-            logger.error( "Failed to create set point object" )
             return
 
         ############################################################################
@@ -94,95 +64,157 @@ class ObjectGroup:
             logger.error( "Failed to create comms thread" )
             return
 
-        self.comms.register_callback("set_point", self.set_point.parse_set_point_message)
-        
-        ############################################################################
-        # Security Thread
-        ############################################################################
-        self.security = security_thread.SecurityThread(self, config = config)
-
-        if not self.security.is_initialized():
-            logger.error( "Failed to create security thread" )
-            return
-
-        self.comms.register_callback("alarm", self.security.parse_alarm_control_message)
-
         ############################################################################
         # Twilio
         ############################################################################
         self.twilio = twilio_interface.TwilioInterface(config = config)
 
         if not self.twilio.is_initialized():
-            logger.error( "Failed to create twilio interface" )
+            logger.warning( "Failed to create twilio interface" )
             return
-        
+
         ############################################################################
         # UDP Multicast
         ############################################################################
         self.broadcast = message_broadcast.MessageBroadcast()
-        
-        ############################################################################
-        # Energy Thread
-        ############################################################################
-        self.energy = energy_thread.EnergyThread(self, config = config)
 
-        if not self.energy.is_initialized():
-            logger.error( "Failed to create energy monitor" )
-        
+        if not self.broadcast.is_initialized():
+            logger.warning( "Failed to create broadcast interface" )
+            return
+
+        ############################################################################
+        # Load all Plugin classes defined in the plugins directory
+        ############################################################################
+
+        ordered_plugins = self.check_dependencies( plugin_classes )
+
+        if ordered_plugins is None:
+            logger.error("DEPENDENCY ERROR")
+            return
+
+        # Load each of the plugin classes
+        for (plugin_class_name, plugin_class_instance) in ordered_plugins:
+
+            try:
+
+                plugin = plugin_class_instance( self, config )
+
+                # Add the plugin as an attribute to this class by name
+                setattr(self, plugin.get_name(), plugin)
+
+                # Add the plugin to the list of plugins
+                self._plugins.append( plugin )
+
+                if plugin.is_initialized():
+                    logger.info("Loaded Plugin: " + plugin.get_name())
+                else:
+                    logger.warning("Failed to load Plugin: " + plugin_class_name)
+
+            except TypeError as te:
+                traceback.print_exc()
+                logger.error("Failed to load Plugin: " + plugin_class_name + "  " + te.message)
+                return
+
+        # Register the set_point callback
+        if hasattr(self, "set_point"):
+            set_p = getattr(self, "set_point")
+            if hasattr(set_p, "parse_set_point_message"):
+                self.comms.register_callback("set_point", set_p.parse_set_point_message)
+
         self._initialized = True
 
     def is_initialized(self):
         return self._initialized
 
+    def is_running(self):
+        return self._running
+
+    def get_plugins(self):
+        return self._plugins
+
     def start(self):
-        if self._initialized and not self._running:
-            self.thermostat.start()
-            self.user_thread.start()
-            self.mem.start()
-            self.furnace_ctrl.start()
-            self.comms.start()
-            self.security.start()
-            self.energy.start()
+        if self.is_initialized() and not self.is_running():
+            for plugin in self.get_plugins():
+                if plugin.is_initialized() and hasattr(plugin, 'start') and callable(getattr(plugin, 'start')):
+                    plugin.start()
+
             self._running = True
 
     def stop(self):
-        if self._initialized and self._running:
-            self.thermostat.stop()
-            self.user_thread.stop()
-            self.mem.stop()
-            self.furnace_ctrl.stop()
-            self.comms.stop()
-            self.security.stop()
-            self.energy.stop()
+        if self.is_initialized() and self.is_running():
+            for plugin in self.get_plugins():
+                if hasattr(plugin, 'stop') and callable(getattr(plugin, 'stop')):
+                    plugin.stop()
+
             self._running = False
 
     def get_javascript(self):
-        return \
-            self.thermostat.get_javascript()   + \
-            self.mem.get_javascript()          + \
-            self.user_thread.get_javascript()  + \
-            self.security.get_javascript()     + \
-            self.furnace_ctrl.get_javascript() + \
-            self.set_point.get_javascript()    + \
-            self.energy.get_javascript()
-        
+        result = ""
+        for plugin in self.get_plugins():
+            if hasattr(plugin, 'get_javascript') and callable(getattr(plugin, 'get_javascript')):
+                result += plugin.get_javascript()
+        return result
+
     def get_html(self):
-        return \
-            self.thermostat.get_html()   + \
-            self.energy.get_html()       + \
-            self.furnace_ctrl.get_html() + \
-            self.set_point.get_html()    + \
-            self.user_thread.get_html()  + \
-            self.security.get_html()     + \
-            self.mem.get_html()
+        result = ""
+        for plugin in self.get_plugins():
+            if hasattr(plugin, 'get_html') and callable(getattr(plugin, 'get_html')):
+                result += plugin.get_html()
+        return result
+
+    @staticmethod
+    def check_dependencies(classes_to_sort):
+
+        num_classes = len(classes_to_sort)
+        ordered_classes = []
+
+        # First pass, add plugins with no dependencies
+        for plugin_name, plugin_class in classes_to_sort:
+            if len(plugin_class.get_dependencies()) == 0:
+                ordered_classes.append( (plugin_name, plugin_class) )
+                logger.debug( "P0: " + plugin_name + " " + str( plugin_class.get_dependencies() ) )
+
+        # Remaining passes, determine the order of the remaining classes
+        num_classes_remaining = num_classes - len(ordered_classes)
+        for pass_num in range(num_classes_remaining):
+            for plugin_name, plugin_class in classes_to_sort:
+
+                # skip the already sorted items
+                if (plugin_name, plugin_class) in ordered_classes:
+                    continue
+
+                dependencies = plugin_class.get_dependencies()
+
+                dependencies_met = True
+                for dependency in dependencies:
+                    if dependency not in [ c for (c, _) in ordered_classes ]:
+                        dependencies_met = False
+                        break
+
+                if dependencies_met:
+                    ordered_classes.append( (plugin_name, plugin_class) )
+                    logger.debug( "P" + str(pass_num + 1) + ": " +
+                                  plugin_name + " " +
+                                  str( plugin_class.get_dependencies() ))
+
+                if len(ordered_classes) == len(classes_to_sort):
+                    return ordered_classes
+
+        if len(ordered_classes) != len(classes_to_sort):
+            return None
 
     @staticmethod
     def get_template_config(config):
-        config = temperature_thread.TemperatureThread.get_template_config(config)
-        config = furnace_control.FurnaceControl.get_template_config(config)
-        config = set_point.SetPoint.get_template_config(config)
-        config = security_thread.SecurityThread.get_template_config(config)
-        config = user_thread.UserThread.get_template_config(config)
-        config = memory_thread.MemoryThread.get_template_config(config)
-        config = energy_thread.EnergyThread.get_template_config(config)
+        for plugin_class in plugin_classes:
+            if hasattr(plugin_class, 'get_template_config') and callable(getattr(plugin_class, 'get_template_config')):
+                config = plugin_class.get_template_config(config)
         return config
+
+
+if __name__ == '__main__':
+    import ConfigParser
+
+    cfg = ConfigParser.ConfigParser()
+    cfg.read(os.path.join(THIS_SCRIPT_DIR,"..","data","config.cfg"))
+
+    og = ObjectGroup( cfg )

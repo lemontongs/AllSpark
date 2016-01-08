@@ -112,18 +112,22 @@ config = parse_config(config_filename)
 
 log_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_filename")
 if log_filename is None:
+    print "log_filename property missing from " + GENERAL_CONFIG_SEC + " section"
     sys.exit(1)
     
 log_level = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "log_level")
 if log_level is None:
+    print "log_level property missing from " + GENERAL_CONFIG_SEC + " section"
     sys.exit(1)
 
 html_filename = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "html_filename")
 if html_filename is None:
+    print "html_filename property missing from " + GENERAL_CONFIG_SEC + " section"
     sys.exit(1)
 
 data_directory = config_utils.get_config_param(config, GENERAL_CONFIG_SEC, "data_directory")
 if data_directory is None:
+    print "data_directory property missing from " + GENERAL_CONFIG_SEC + " section"
     sys.exit(1)
 
 if not os.path.exists(data_directory):

@@ -11,8 +11,8 @@ logger = logging.getLogger('allspark.spark_interface')
 
 
 class SparkInterface:
-    def __init__(self, object_group, auth_filename = "spark_auth.txt"):
-        self.og = object_group
+    def __init__(self, auth_filename = "spark_auth.txt"):
+
         self._initialized = False
         self.mutex = Lock()
         
@@ -132,7 +132,7 @@ class SparkInterface:
             return result
 
 if __name__ == "__main__":    
-    s = SparkInterface(1, "data/spark_auth.txt")
+    s = SparkInterface("data/spark_auth.txt")
     devNames = s.get_device_names(postfix="_floor_temp")
     for d in devNames:
         print d, ":", s.get_variable(d, "temperature")

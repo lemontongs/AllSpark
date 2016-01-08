@@ -1,25 +1,28 @@
 
 import ConfigParser
 import os
-import logging
 from threading import Lock
 from utilities import config_utils
+from utilities.plugin import Plugin
 
-CONFIG_SEC_NAME = "set_point"
-
-logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+PLUGIN_NAME = "set_point"
 
 
-class SetPoint:
+class SetPointPlugin(Plugin):
+
+    @staticmethod
+    def get_dependencies():
+        return ['TemperatureMonitorPlugin']
+
     def __init__(self, object_group, config):
-        self.og = object_group
-        self._initialized = False
+        Plugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
+
         self.set_point_lock = Lock()
 
-        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+        if not self.enabled:
             return
 
-        self.set_point_filename = config_utils.get_config_param( config, CONFIG_SEC_NAME, "set_point_file")
+        self.set_point_filename = config_utils.get_config_param(config, PLUGIN_NAME, "set_point_file", self.logger)
         if self.set_point_filename is None:
             return
 
@@ -38,9 +41,9 @@ class SetPoint:
     
     @staticmethod
     def get_template_config(config):
-        config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME, "data_directory", "data")
-        config.set(CONFIG_SEC_NAME, "set_point_file", "%(data_directory)s/set_points.cfg")
+        config.add_section(PLUGIN_NAME)
+        config.set(PLUGIN_NAME, "data_directory", "data")
+        config.set(PLUGIN_NAME, "set_point_file", "%(data_directory)s/set_points.cfg")
         
     def load_set_point_file(self):
         
@@ -49,7 +52,7 @@ class SetPoint:
             self.set_point_config.add_section(self.set_point_section)
             self.set_point_config.add_section(self.user_rule_section)
             
-            for device in self.og.thermostat.get_device_names():
+            for device in self.og.thermostat_plugin.get_device_names():
                 self.set_point_config.set(self.set_point_section, device, "65.0")
             
         else:
@@ -58,14 +61,14 @@ class SetPoint:
             if not self.set_point_config.has_section(self.set_point_section):
                 self.set_point_config.add_section(self.set_point_section)
             
-            for device in self.og.thermostat.get_device_names():
+            for device in self.og.thermostat_plugin.get_device_names():
             
                 if not self.set_point_config.has_option(self.set_point_section, device):
                     self.set_point_config.set(self.set_point_section, device, "65.0")
                 
         # verify the contents of the file, and create the zones structure
         self.zones = {}
-        for device in self.og.thermostat.get_device_names():
+        for device in self.og.thermostat_plugin.get_device_names():
             
             t = 65.0
             try:
@@ -74,8 +77,8 @@ class SetPoint:
                 pass
             
             if 50 > t or t > 90:
-                logger.warning( "set point for '" + device + "' is out of bounds (<50 or >90). Got: " + str(t) +
-                                ". Setting it to 65.0" )
+                self.logger.warning( "set point for '" + device + "' is out of bounds (<50 or >90). Got: " + str(t) +
+                                     ". Setting it to 65.0" )
                 t = 65.0
             
             self.zones[device] = { 'set_point': t }
@@ -113,7 +116,7 @@ class SetPoint:
             self.set_point_lock.acquire()
             
             if zone_name not in self.zones.keys():
-                logger.warning( "Warning: get_set_point: " + zone_name + " not found" )
+                self.logger.warning( "Warning: get_set_point: " + zone_name + " not found" )
                 return 60.0
             
             set_point = self.rules['away_set_point']
@@ -132,17 +135,17 @@ class SetPoint:
         
     def parse_set_point_message(self, msg):
         if len(msg.split(',')) != 3:
-            logger.warning( "Error parsing set_point message" )
+            self.logger.warning( "Error parsing set_point message" )
             return
         
-        logger.debug("Got message: " + msg)
+        self.logger.debug("Got message: " + msg)
         
         zone = msg.split(',')[1]
         
         self.set_point_lock.acquire()
         try:
             if zone not in self.zones.keys():
-                logger.warning( "Error parsing set_point message: " + zone + " not found" )
+                self.logger.warning( "Error parsing set_point message: " + zone + " not found" )
                 self.set_point_lock.release()
                 return
                 
@@ -152,7 +155,7 @@ class SetPoint:
             except ValueError:
                 pass
             
-            logger.debug("Set point for: " + zone + " changed to: " + str(set_point) )
+            self.logger.debug("Set point for: " + zone + " changed to: " + str(set_point) )
             
             self.zones[zone]['set_point'] = set_point
             self.save_zones_to_file()
@@ -162,72 +165,75 @@ class SetPoint:
 
         self.set_point_lock.release()
 
-    def is_initialized(self):
-        return self._initialized
-    
     def get_html(self):
-        html = '<div id="thermostats" class="jumbotron">'
-        
-        for zone in self.zones:
-            
-            zone_name       = zone.replace("_floor_temp", "")
-            zone_name_upper = zone_name[0].upper() + zone_name[1:]
-            
-            html += """
-            
-            <div class="row">
-                <div class="col-md-2">
-                    <h2>%s Floor</h2>          <!-- FLOOR NAME -->
-                    <p>Current: %.1f</p>       <!-- TOP CURRENT TEMP -->
-                </div>
-                <div class="col-md-5">
-                    <h2></h2>
-                    <div class="input-group input-group-lg">                              <!-- ZONE NAME, SET POINT -->
-                        <input type="text" class="form-control" name="%s" value="%.1f">
-                        <div class="input-group-btn">
-                            <button name="%s"
-                                    type="button"
-                                    class="btn btn-primary"
-                                    onclick="updateSetPoint('%s')">Submit</button>
-                        </div>
-                    </div>
-                    <script>
-                        $("input[name='%s']").TouchSpin({
-                            min: 50,
-                            max: 80,
-                            step: 0.5,
-                            decimals: 1,
-                            boostat: 5,
-                            maxboostedstep: 10,
-                            prefix: "Set:",
-                            postfix: 'F'
-                        });
-                    </script>
-                </div>
-            </div>
-            
-            """ % ( zone_name_upper,
-                    self.og.thermostat.get_current_device_temp( zone ),
-                    zone,
-                    self.get_set_point( zone ),
-                    zone + "_btn",
-                    zone,
-                    zone )
 
-        html += '</div>'
+        html = ""
+
+        if self.is_initialized():
+
+            html = '<div id="thermostats" class="jumbotron">'
+
+            for zone in self.zones:
+
+                zone_name       = zone.replace("_floor_temp", "")
+                zone_name_upper = zone_name[0].upper() + zone_name[1:]
+
+                html += """
+
+                <div class="row">
+                    <div class="col-md-2">
+                        <h2>%s Floor</h2>          <!-- FLOOR NAME -->
+                        <p>Current: %.1f</p>       <!-- TOP CURRENT TEMP -->
+                    </div>
+                    <div class="col-md-5">
+                        <h2></h2>
+                        <div class="input-group input-group-lg">                              <!-- ZONE NAME, SET POINT -->
+                            <input type="text" class="form-control" name="%s" value="%.1f">
+                            <div class="input-group-btn">
+                                <button name="%s"
+                                        type="button"
+                                        class="btn btn-primary"
+                                        onclick="updateSetPoint('%s')">Submit</button>
+                            </div>
+                        </div>
+                        <script>
+                            $("input[name='%s']").TouchSpin({
+                                min: 50,
+                                max: 80,
+                                step: 0.5,
+                                decimals: 1,
+                                boostat: 5,
+                                maxboostedstep: 10,
+                                prefix: "Set:",
+                                postfix: 'F'
+                            });
+                        </script>
+                    </div>
+                </div>
+
+                """ % ( zone_name_upper,
+                        self.og.thermostat_plugin.get_current_device_temp( zone ),
+                        zone,
+                        self.get_set_point( zone ),
+                        zone + "_btn",
+                        zone,
+                        zone )
+
+            html += '</div>'
         
         return html
 
     @staticmethod
     def get_javascript():
+
         jscript = """
-        
+
         function updateSetPoint(device)
         {
             var set_point = $("input[name='"+device+"']").val()
-            
+
             $.get("cgi-bin/web_control.py?set_temp="+set_point+"&floor="+device, function (result)
-            { 
+            {
                 if (result.trim() == "OK")
                 {
                     $("button[name='"+device+"_btn']").toggleClass('btn-primary');
@@ -251,7 +257,7 @@ class SetPoint:
                 }
             });
         }
-        
+
         """
-        
+
         return jscript

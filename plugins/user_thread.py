@@ -1,36 +1,36 @@
 import subprocess
 import time
-import logging
-from utilities import thread_base
+from utilities.thread_base import ThreadedPlugin
 from utilities import config_utils
 from utilities.data_logging import presence_logger
 
-CONFIG_SEC_NAME = "user_thread"
-
-logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+PLUGIN_NAME = "user_thread"
 
 
-class UserThread(thread_base.ASThread):
+class UserMonitorPlugin(ThreadedPlugin):
+
+    @staticmethod
+    def get_dependencies():
+        return []
+
     def __init__(self, object_group, config):
-        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
-        
-        self.og = object_group
-        
-        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+        ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
+
+        if not self.enabled:
             return
 
-        self.data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
         if self.data_directory is None:
             return
 
-        usernames = config_utils.get_config_param( config, CONFIG_SEC_NAME, "users")
-        if usernames is None:
+        user_names = config_utils.get_config_param(config, PLUGIN_NAME, "users", self.logger)
+        if user_names is None:
             return
-        usernames = usernames.split(",")
+        user_names = user_names.split(",")
         
         self.users = {}
         
-        for user in usernames:
+        for user in user_names:
             if user not in config.sections():
                 print user + " section is missing"
                 return
@@ -43,16 +43,16 @@ class UserThread(thread_base.ASThread):
         
         self.users_present = True
         
-        self.data_logger = presence_logger.PresenceLogger(self.data_directory, "user_data", usernames)
+        self.data_logger = presence_logger.PresenceLogger(self.data_directory, "user_data", user_names)
         
         self._initialized = True
     
     @staticmethod
     def get_template_config(config):
-        config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME, "temp_data_dir", "data")
-        config.set(CONFIG_SEC_NAME, "data_directory", "%(temp_data_dir)s/user_data")
-        config.set(CONFIG_SEC_NAME, "users", "user_1,user_2,user_3")
+        config.add_section(PLUGIN_NAME)
+        config.set(PLUGIN_NAME, "temp_data_dir", "data")
+        config.set(PLUGIN_NAME, "data_directory", "%(temp_data_dir)s/user_data")
+        config.set(PLUGIN_NAME, "users", "user_1,user_2,user_3")
         config.add_section("user_1")
         config.set("user_1", "mac", "xx:xx:xx:xx:xx:xx")
         config.add_section("user_2")
@@ -92,7 +92,7 @@ class UserThread(thread_base.ASThread):
                 data.append(user)
                 someone_is_home = True
         
-        logger.info( "Someone is home: " + str(someone_is_home) )
+        self.logger.info( "Someone is home: " + str(someone_is_home) )
         self.users_present = someone_is_home
         self.data_logger.add_data( data )
             
@@ -118,20 +118,24 @@ class UserThread(thread_base.ASThread):
             if case_sensitive_user.lower() == user.lower():
                 return self.users[case_sensitive_user]['is_home'] 
         
-        logger.warning( "unknown user: " + user )
+        self.logger.warning( "unknown user: " + user )
         return False
     
     def get_html(self):
-        html = """
-            <div id="whosehome" class="jumbotron">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h2>Someone is home: %s</h2>     <!-- SOMEONE IS HOME -->
-                        <div id="user_chart_div"></div>
+
+        html = ""
+
+        if self.is_initialized():
+            html = """
+                <div id="whosehome" class="jumbotron">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h2>Someone is home: %s</h2>     <!-- SOMEONE IS HOME -->
+                            <div id="user_chart_div"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        """ % self.is_someone_present_string()
+            """ % self.is_someone_present_string()
         
         return html
     

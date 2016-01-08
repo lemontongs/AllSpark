@@ -7,45 +7,53 @@ import traceback
 from utilities.data_logging import presence_logger
 from utilities import config_utils
 from utilities import udp_interface
-from utilities import thread_base
+from utilities.thread_base import ThreadedPlugin
 
-CONFIG_SEC_NAME = "furnace_control"
-
-logger = logging.getLogger('allspark.' + CONFIG_SEC_NAME)
+PLUGIN_NAME = "furnace_control"
 
 
-class FurnaceControl(thread_base.ASThread):
+class FurnaceControlPlugin(ThreadedPlugin):
+
+    @staticmethod
+    def get_dependencies():
+        return ['TemperatureMonitorPlugin', 'SetPointPlugin']
+
     def __init__(self, object_group, config):
-        thread_base.ASThread.__init__(self, CONFIG_SEC_NAME)
-        
-        self.og = object_group
-        
+        ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
+
         # Get parameters from the config file
 
-        if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
+        if not self.enabled:
             return
 
-        data_directory = config_utils.get_config_param( config, CONFIG_SEC_NAME, "data_directory")
+        self.disable_commands = config_utils.get_config_param(config, PLUGIN_NAME, "disable_commands", self.logger)
+        if self.disable_commands is None or self.disable_commands.lower() != "true":
+            self.disable_commands = False
+        else:
+            self.disable_commands = True
+            self.logger.warning("COMMANDS TO FURNACE CONTROLLER DISABLED")
+
+        data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
         if data_directory is None:
             return
-        
-        address = config_utils.get_config_param( config, CONFIG_SEC_NAME, "address")
+
+        address = config_utils.get_config_param(config, PLUGIN_NAME, "address", self.logger)
         if address is None:
             return
         
-        command_port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "command_port")
+        command_port = config_utils.get_config_param(config, PLUGIN_NAME, "command_port", self.logger)
         if command_port is None:
             return
         
-        response_port = config_utils.get_config_param( config, CONFIG_SEC_NAME, "response_port")
+        response_port = config_utils.get_config_param(config, PLUGIN_NAME, "response_port", self.logger)
         if response_port is None:
             return
         
         # Get the device pins from the config file
-        self.zones = self.og.thermostat.get_device_names()
+        self.zones = self.og.thermostat_plugin.get_device_names()
         self.pins = {}
         for device in self.zones:
-            pin_str = config_utils.get_config_param( config, CONFIG_SEC_NAME, device)
+            pin_str = config_utils.get_config_param(config, PLUGIN_NAME, device, self.logger)
             if pin_str is None:
                 return
             self.pins[device] = int(pin_str)
@@ -54,9 +62,9 @@ class FurnaceControl(thread_base.ASThread):
         self.furnace_controller = udp_interface.UDPSocket(address,
                                                           response_port,
                                                           command_port,
-                                                          CONFIG_SEC_NAME + "_inf")
+                                                          PLUGIN_NAME + "_inf")
         if not self.furnace_controller.is_initialized():
-            logger.error( "Failed to initialize furnace_controller" )
+            self.logger.error( "Failed to initialize furnace_controller" )
             return
         self.furnace_controller.start()
         
@@ -67,12 +75,12 @@ class FurnaceControl(thread_base.ASThread):
 
     @staticmethod
     def get_template_config(config):
-        config.add_section(CONFIG_SEC_NAME)
-        config.set(CONFIG_SEC_NAME, "temp_data_dir", "data")
-        config.set(CONFIG_SEC_NAME, "data_directory", "%(temp_data_dir)s/furnace_data")
-        config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_1>", "<pin for zone 1>")
-        config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_2>", "<pin for zone 2>")
-        config.set(CONFIG_SEC_NAME, "<Particle device name for Zone_3>", "<pin for zone 3>")
+        config.add_section(PLUGIN_NAME)
+        config.set(PLUGIN_NAME, "temp_data_dir", "data")
+        config.set(PLUGIN_NAME, "data_directory", "%(temp_data_dir)s/furnace_data")
+        config.set(PLUGIN_NAME, "<Particle device name for Zone_1>", "<pin for zone 1>")
+        config.set(PLUGIN_NAME, "<Particle device name for Zone_2>", "<pin for zone 2>")
+        config.set(PLUGIN_NAME, "<Particle device name for Zone_3>", "<pin for zone 3>")
         
     def private_run_cleanup(self):
         if self.is_initialized():
@@ -81,32 +89,33 @@ class FurnaceControl(thread_base.ASThread):
             self.furnace_controller.stop()
 
     def on(self, pin):
-        if self.is_initialized():
+        if self.is_initialized() and not self.disable_commands:
             self.furnace_controller.send_message(str(pin) + "1")
 
     def off(self, pin):
-        if self.is_initialized():
+        if self.is_initialized() and not self.disable_commands:
             self.furnace_controller.send_message(str(pin) + "0")
     
     def private_run(self):
         
         # Send a heartbeat request
-        logger.debug( "Sending heartbeat request to furnace controller" )
-        self.furnace_controller.clear()
-        self.furnace_controller.send_message( "00" )
+        if not self.disable_commands:
+            self.logger.debug( "Sending heartbeat request to furnace controller" )
+            self.furnace_controller.clear()
+            self.furnace_controller.send_message( "00" )
         
-        # Wait for the response
-        response = self.furnace_controller.get(timeout = 5)
-        if response is not None:
-            (_, data) = response
-            if data == "OK":
-                logger.info( "Got heartbeat from furnace controller: " + data )
+            # Wait for the response
+            response = self.furnace_controller.get(timeout = 5)
+            if response is not None:
+                (_, data) = response
+                if data == "OK":
+                    self.logger.info( "Got heartbeat from furnace controller: " + data )
+                else:
+                    self.logger.warning( "Got unexpected response from furnace controller: " + data )
+                    # TODO: reset the furnace controller
             else:
-                logger.warning( "Got unexpected response from furnace controller: " + data )
-                # TODO: reset the furnace controller 
-        else:
-            logger.warning( "Got no response from furnace controller" )
-            # TODO: reset the furnace controller 
+                self.logger.warning( "Got no response from furnace controller" )
+                # TODO: reset the furnace controller
         
         zones_that_are_heating = []
         
@@ -115,7 +124,7 @@ class FurnaceControl(thread_base.ASThread):
             for zone in self.zones:
                 
                 # Get the zones temp and set poin information
-                current_temperature = self.og.thermostat.get_current_device_temp(zone)
+                current_temperature = self.og.thermostat_plugin.get_current_device_temp(zone)
                 pin = self.pins[zone]
                 set_p = self.og.set_point.get_set_point(zone)
                 
@@ -132,7 +141,7 @@ class FurnaceControl(thread_base.ASThread):
                     s = "cooling"
                     self.off(pin)
                 
-                logger.info("Z: " + zone + " T: " + str(current_temperature) + " SP: " + str(set_p) + " " + s)
+                self.logger.info("Z: " + zone + " T: " + str(current_temperature) + " SP: " + str(set_p) + " " + s)
             
             # Log the data
             self.data_logger.add_data( zones_that_are_heating )
@@ -191,14 +200,14 @@ if __name__ == "__main__":
                         datefmt='%Y-%m-%d %H:%M:%S')
         
     conf = ConfigParser.ConfigParser()
-    conf.add_section(CONFIG_SEC_NAME)
-    conf.set(CONFIG_SEC_NAME, "data_directory", "test_data")
-    conf.set(CONFIG_SEC_NAME, "address", "225.1.1.2")
-    conf.set(CONFIG_SEC_NAME, "command_port", "5300")
-    conf.set(CONFIG_SEC_NAME, "response_port", "5400")
-    conf.set(CONFIG_SEC_NAME, "top_floor_temp", "3")
-    conf.set(CONFIG_SEC_NAME, "main_floor_temp", "4")
-    conf.set(CONFIG_SEC_NAME, "basement_floor_temp", "5")
+    conf.add_section(PLUGIN_NAME)
+    conf.set(PLUGIN_NAME, "data_directory", "test_data")
+    conf.set(PLUGIN_NAME, "address", "225.1.1.2")
+    conf.set(PLUGIN_NAME, "command_port", "5300")
+    conf.set(PLUGIN_NAME, "response_port", "5400")
+    conf.set(PLUGIN_NAME, "top_floor_temp", "3")
+    conf.set(PLUGIN_NAME, "main_floor_temp", "4")
+    conf.set(PLUGIN_NAME, "basement_floor_temp", "5")
     
     # TODO: fix this!
     temp = 80.0
@@ -233,7 +242,7 @@ if __name__ == "__main__":
     
     og = OG()
     
-    fc = FurnaceControl(og, conf)
+    fc = FurnaceControlPlugin(og, conf)
     
     if not fc.is_initialized():
         print "NOT INITIALIZED"

@@ -4,25 +4,28 @@ import sys
 import traceback
 import time
 import logging
+from plugin import Plugin
 from threading import Thread, Lock
 
 
-class ASThread(Thread):
-    
-    def __init__(self, config_sec_name):
-        Thread.__init__(self, name=config_sec_name)
+class ThreadedPlugin(Thread, Plugin):
+
+    @staticmethod
+    def get_dependencies():
+        return []
+
+    def __init__(self, plugin_name, config=None, object_group=None):
+        Thread.__init__(self, name=plugin_name)
+        Plugin.__init__(self, config=config, object_group=object_group, plugin_name=plugin_name)
+
         self._run_lock    = Lock()
-        self._initialized = False
         self._running     = False
-        self.logger       = logging.getLogger('allspark.' + config_sec_name)
+        self.logger       = logging.getLogger('allspark.' + plugin_name)
         self.daemon       = True  # thread dies with program
-        
-    def is_initialized(self):
-        return self._initialized
-          
+
     def is_running(self):
         return self._running
-            
+
     def stop(self):
         if self.is_initialized() and self.is_running():
             self.logger.info( "Stopping thread" )

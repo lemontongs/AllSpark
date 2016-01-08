@@ -15,15 +15,15 @@ class TwilioInterface:
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
-        sid = config_utils.get_config_param( config, CONFIG_SEC_NAME, "sid")
+        sid = config_utils.get_config_param( config, CONFIG_SEC_NAME, "sid", logger)
         if sid is None:
             return
                
-        auth = config_utils.get_config_param( config, CONFIG_SEC_NAME, "auth")
+        auth = config_utils.get_config_param( config, CONFIG_SEC_NAME, "auth", logger)
         if auth is None:
             return
                
-        self.number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "number")
+        self.number = config_utils.get_config_param( config, CONFIG_SEC_NAME, "number", logger)
         if self.number is None:
             return
         

@@ -1,16 +1,15 @@
 
-from thread_base import ASThread
+from thread_base import ThreadedPlugin
 import logging
 import socket
 import select
 import Queue
 
 
-class UDPSocket(ASThread):
+class UDPSocket(ThreadedPlugin):
     def __init__(self, address, rx_port, tx_port, thread_name = "udp_interface"):
-        ASThread.__init__(self, thread_name)
-        self.logger = logging.getLogger('allspark.' + thread_name)
-        
+        ThreadedPlugin.__init__(self, plugin_name=thread_name)
+
         self.address = address
         if self.address is None:
             self.logger.error("Address is None")
