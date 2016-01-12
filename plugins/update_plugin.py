@@ -109,6 +109,13 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
 if __name__ == "__main__":
     import ConfigParser
+    import logging
+
+    logging.getLogger('').handlers = []
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(name)-30s %(levelname)-8s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+
     cfg = ConfigParser.ConfigParser()
     UpdateThreadPlugin.get_template_config(cfg)
 
