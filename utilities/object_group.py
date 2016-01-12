@@ -101,8 +101,7 @@ class ObjectGroup:
                 for dependency in plugin_class_instance.get_dependencies():
                     dependency_ok = False
                     for loaded_plugin in self._plugins:
-                        print loaded_plugin
-                        if loaded_plugin.__name__ == dependency:
+                        if loaded_plugin.__class__.__name__ == dependency:
                             dependency_ok = True
                             break
 
