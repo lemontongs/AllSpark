@@ -121,6 +121,8 @@ class ObjectGroup:
                     # Add the plugin to the list of plugins
                     self._plugins.append( plugin )
                     logger.info("Loaded Plugin: " + plugin.get_name())
+                elif not plugin.enabled:
+                    logger.ingo("Plugin disabled: " + plugin_class_name)
                 else:
                     logger.warning("Failed to load Plugin: " + plugin_class_name)
 
