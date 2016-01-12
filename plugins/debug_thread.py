@@ -18,10 +18,6 @@ class DebugThreadPlugin(ThreadedPlugin):
         if not self.enabled:
             return
 
-        self.enabled = config_utils.get_config_param(config, PLUGIN_NAME, "enabled", self.logger)
-        if self.enabled is None or self.enabled.lower() != "true":
-            return
-
         if "collect_period" not in config.options(PLUGIN_NAME):
             self.collect_period = 10
         else:
