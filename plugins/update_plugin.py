@@ -99,7 +99,7 @@ class UpdateThreadPlugin(ThreadedPlugin):
         except requests.RequestException as re:
             print re
 
-        for _ in range(10):
+        for _ in range(self.check_every_seconds):
             if self._running:
                 time.sleep(1)
 
