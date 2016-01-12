@@ -90,9 +90,7 @@ class UpdateThreadPlugin(ThreadedPlugin):
             if res.status_code == 200:
 
                 self.latest = res.text.strip()
-
                 new_version_time = self.get_version_time( self.latest )
-
                 self.logger.info("Latest: " + self.latest + "   " + str(new_version_time - self.current_version_time) )
 
                 if new_version_time > self.current_version_time:
