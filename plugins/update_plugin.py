@@ -131,8 +131,11 @@ if __name__ == "__main__":
 
     update = UpdateThreadPlugin( TempOG(), cfg )
 
-    update.start()
+    if update.is_initialized():
+        update.start()
 
-    time.sleep(10)
+        time.sleep(10)
 
-    update.stop()
+        update.stop()
+    else:
+        update.logger.error("Failed to initialize UpdateThreadPlugin")
