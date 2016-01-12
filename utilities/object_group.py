@@ -96,16 +96,30 @@ class ObjectGroup:
         for (plugin_class_name, plugin_class_instance) in ordered_plugins:
 
             try:
+                # Make sure its dependencies loaded ok
+                all_dependencies_met = True
+                for dependency in plugin_class_instance.get_dependencies():
+                    dependency_ok = False
+                    for loaded_plugin in self._plugins:
+                        if loaded_plugin.__name__ == dependency:
+                            dependency_ok = True
+                            break
 
+                    if not dependency_ok:
+                        all_dependencies_met = False
+
+                if not all_dependencies_met:
+                    continue
+
+                # Dependencies met, continue to load this plugin
                 plugin = plugin_class_instance( self, config )
 
                 # Add the plugin as an attribute to this class by name
                 setattr(self, plugin.get_name(), plugin)
 
-                # Add the plugin to the list of plugins
-                self._plugins.append( plugin )
-
                 if plugin.is_initialized():
+                    # Add the plugin to the list of plugins
+                    self._plugins.append( plugin )
                     logger.info("Loaded Plugin: " + plugin.get_name())
                 else:
                     logger.warning("Failed to load Plugin: " + plugin_class_name)
