@@ -41,7 +41,7 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
     def get_version_time(self, version):
         try:
-            subprocess.call("git remote update")
+            subprocess.call("git remote update", shell=True)
             return int(subprocess.check_output("git log -1 --pretty=tformat:%%at " + version, shell=True))
         except Exception as e:
             self.logger.error(e)
