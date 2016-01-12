@@ -36,7 +36,7 @@ class UpdateThreadPlugin(ThreadedPlugin):
     @staticmethod
     def get_template_config(config):
         config.add_section(PLUGIN_NAME)
-        config.set(PLUGIN_NAME, "enabled", "false")
+        config.set(PLUGIN_NAME, "enabled", "true")
         config.set(PLUGIN_NAME, "check_every_seconds", "86400")
 
     def get_version_time(self, version):
