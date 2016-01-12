@@ -77,7 +77,7 @@ class UpdateThreadPlugin(ThreadedPlugin):
             self.logger.info("Checking for update")
             res = requests.get("www.lemontongs.com/allspark_latest")
 
-            print res.status_code, res.text
+            print res.status_code,res.text
 
             if res.status_code == 200:
                 self.latest = res.text
