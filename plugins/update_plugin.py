@@ -69,10 +69,10 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
         # Do the update
         self.logger.info("Updating to version: " + self.latest)
-        subprocess.call("git checkout " + self.latest)
+        subprocess.call("git checkout " + self.latest, shell=True)
 
         # Schedule a reboot
-        subprocess.call(["shutdown", "-r", "+5"])
+        subprocess.call("shutdown -r +5", shell=True)
 
         # Shutdown all the plugins (except this one)
         plugins = self.og.get_plugins()
