@@ -41,6 +41,7 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
     def get_version_time(self, version):
         try:
+            subprocess.call(["git", "remote", "update"])
             return int(subprocess.check_output(["git", "log", "-1", "--pretty=tformat:%at", version]))
         except Exception as e:
             self.logger.error(e)
@@ -68,7 +69,6 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
         # Do the update
         self.logger.info("Updating to version: " + self.latest)
-        subprocess.call(["git", "remote", "update"])
         subprocess.call(["git", "checkout", self.latest])
 
         # Schedule a reboot
@@ -106,3 +106,13 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
     def private_run_cleanup(self):
         pass
+
+if __name__ == "__main__":
+
+    update = UpdateThreadPlugin(None, None)
+
+    update.start()
+
+    time.sleep(10)
+
+    update.stop()
