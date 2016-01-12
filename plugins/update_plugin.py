@@ -108,8 +108,21 @@ class UpdateThreadPlugin(ThreadedPlugin):
         pass
 
 if __name__ == "__main__":
+    import ConfigParser
+    cfg = ConfigParser.ConfigParser()
+    UpdateThreadPlugin.get_template_config(cfg)
 
-    update = UpdateThreadPlugin(None, None)
+    class TempOG:
+
+        def __init__(self):
+            pass
+
+        @staticmethod
+        def get_plugins():
+            return []
+
+
+    update = UpdateThreadPlugin( TempOG(), cfg )
 
     update.start()
 
