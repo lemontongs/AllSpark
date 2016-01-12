@@ -1,6 +1,7 @@
 
 import requests
 import subprocess
+import time
 from utilities.thread_base import ThreadedPlugin
 
 PLUGIN_NAME = "update_thread"
@@ -75,6 +76,9 @@ class UpdateThreadPlugin(ThreadedPlugin):
         try:
             self.logger.info("Checking for update")
             res = requests.get("www.lemontongs.com/allspark_latest")
+
+            print res.status_code, res.text
+
             if res.status_code == 200:
                 self.latest = res.text
 
@@ -83,6 +87,10 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
         except requests.RequestException:
             pass
+
+        for _ in range(10):
+            if self._running:
+                time.sleep(1)
 
     def private_run_cleanup(self):
         pass
