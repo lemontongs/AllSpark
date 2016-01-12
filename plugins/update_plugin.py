@@ -133,9 +133,7 @@ if __name__ == "__main__":
 
     if update.is_initialized():
         update.start()
-
         time.sleep(10)
-
         update.stop()
     else:
         update.logger.error("Failed to initialize UpdateThreadPlugin")
