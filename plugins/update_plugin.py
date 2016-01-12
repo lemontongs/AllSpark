@@ -24,7 +24,7 @@ class UpdateThreadPlugin(ThreadedPlugin):
         else:
             self.check_every_seconds = int(config.get(PLUGIN_NAME, "check_every_seconds", True))
 
-        self.current_version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        self.current_version = subprocess.check_output("git rev-parse --short HEAD").strip()
         self.current_version_time = self.get_version_time(self.current_version)
 
         self.logger.info("Current version: " + self.current_version + " time: " + str(self.current_version_time) )
@@ -41,8 +41,8 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
     def get_version_time(self, version):
         try:
-            subprocess.call(["git", "remote", "update"])
-            return int(subprocess.check_output(["git", "log", "-1", "--pretty=tformat:%%at", version]))
+            subprocess.call("git remote update")
+            return int(subprocess.check_output("git log -1 --pretty=tformat:%%at " + version))
         except Exception as e:
             self.logger.error(e)
             return 0
