@@ -42,7 +42,6 @@ class UpdateThreadPlugin(ThreadedPlugin):
     def get_version_time(self, version):
         try:
             subprocess.check_output("git remote update", shell=True)
-            print "git log -1 --pretty=tformat:%at " + version
             return int(subprocess.check_output("git log -1 --pretty=tformat:%at " + version, shell=True))
         except Exception as e:
             self.logger.error(e)
@@ -93,7 +92,6 @@ class UpdateThreadPlugin(ThreadedPlugin):
             if res.status_code == 200:
                 self.latest = res.text.strip()
 
-                self.logger.info("Latest version: " + self.latest )
                 new_version_time = self.get_version_time( self.latest )
 
                 if new_version_time > self.current_version_time:
