@@ -90,8 +90,9 @@ class UpdateThreadPlugin(ThreadedPlugin):
             res = requests.get("http://www.lemontongs.com/allspark_latest")
 
             if res.status_code == 200:
-                self.latest = res.text
+                self.latest = res.text.strip()
 
+                self.logger.info("Latest version: " + self.latest )
                 new_version_time = self.get_version_time( self.latest )
 
                 if new_version_time > self.current_version_time:
