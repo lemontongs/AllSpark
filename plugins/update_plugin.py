@@ -25,6 +25,10 @@ class UpdateThreadPlugin(ThreadedPlugin):
             self.check_every_seconds = int(config.get(PLUGIN_NAME, "check_every_seconds", True))
 
         self.current_version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        self.current_version_time = self.get_version_time(self.current_version)
+
+        self.logger.info("Current version: " + self.current_version + " time: " + str(self.current_version_time) )
+
         self.latest = ""
 
         self._initialized = True
@@ -34,6 +38,13 @@ class UpdateThreadPlugin(ThreadedPlugin):
         config.add_section(PLUGIN_NAME)
         config.set(PLUGIN_NAME, "enabled", "false")
         config.set(PLUGIN_NAME, "check_every_seconds", "86400")
+
+    def get_version_time(self, version):
+        try:
+            return int(subprocess.check_output(["git", "log", "-1", "--pretty=tformat:%at", version]))
+        except Exception as e:
+            self.logger.error(e)
+            return 0
 
     def get_html(self):
         html = ""
@@ -57,7 +68,8 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
         # Do the update
         self.logger.info("Updating to version: " + self.latest)
-        subprocess.call(["git", "pull"])
+        subprocess.call(["git", "remote", "update"])
+        subprocess.call(["git", "checkout", self.latest])
 
         # Schedule a reboot
         subprocess.call(["shutdown", "-r", "+5"])
@@ -75,14 +87,14 @@ class UpdateThreadPlugin(ThreadedPlugin):
 
         try:
             self.logger.info("Checking for update")
-            res = requests.get("www.lemontongs.com/allspark_latest")
-
-            print res.status_code, res.text
+            res = requests.get("http://www.lemontongs.com/allspark_latest")
 
             if res.status_code == 200:
                 self.latest = res.text
 
-                if self.latest != self.current_version:
+                new_version_time = self.get_version_time( self.latest )
+
+                if new_version_time > self.current_version_time:
                     self.perform_update()
 
         except requests.RequestException as re:
