@@ -101,14 +101,18 @@ class ObjectGroup:
                 for dependency in plugin_class_instance.get_dependencies():
                     dependency_ok = False
                     for loaded_plugin in self._plugins:
-                        if loaded_plugin.__class__.__name__ == dependency:
+                        if loaded_plugin.__class__.__name__ == dependency and \
+                                loaded_plugin.is_initialized() and \
+                                loaded_plugin.is_enabled():
                             dependency_ok = True
                             break
 
                     if not dependency_ok:
                         all_dependencies_met = False
+                        break
 
                 if not all_dependencies_met:
+                    logger.warning("Failed to load Plugin: " + plugin_class_name + " dependencies not met")
                     continue
 
                 # Dependencies met, continue to load this plugin
@@ -117,11 +121,13 @@ class ObjectGroup:
                 # Add the plugin as an attribute to this class by name
                 setattr(self, plugin.get_name(), plugin)
 
+                # Add the plugin to the list of plugins
+                self._plugins.append( plugin )
+
+                # Report status
                 if plugin.is_initialized():
-                    # Add the plugin to the list of plugins
-                    self._plugins.append( plugin )
                     logger.info("Loaded Plugin: " + plugin.get_name())
-                elif not plugin.enabled:
+                elif not plugin.is_enabled():
                     logger.info("Plugin disabled: " + plugin_class_name)
                 else:
                     logger.warning("Failed to load Plugin: " + plugin_class_name)
@@ -217,7 +223,7 @@ class ObjectGroup:
                     return ordered_classes
 
         if len(ordered_classes) != len(classes_to_sort):
-            return None
+            return []
 
     @staticmethod
     def get_template_config(config):
@@ -231,6 +237,6 @@ if __name__ == '__main__':
     import ConfigParser
 
     cfg = ConfigParser.ConfigParser()
-    cfg.read(os.path.join(THIS_SCRIPT_DIR,"..","data","config.cfg"))
+    cfg.read(os.path.join(THIS_SCRIPT_DIR, "..", "data", "config.cfg"))
 
     og = ObjectGroup( cfg )

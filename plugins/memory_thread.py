@@ -20,7 +20,7 @@ class MemoryMonitorPlugin(ThreadedPlugin):
 
         self.mutex = Lock()
         
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)

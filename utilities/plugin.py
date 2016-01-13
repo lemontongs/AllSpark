@@ -12,7 +12,7 @@ class Plugin:
         self.config = config
 
         # Modified in config
-        self.enabled = True
+        self._enabled = True
 
         if config is not None:
             self.verify_common_plugin_config_items()
@@ -20,21 +20,25 @@ class Plugin:
     def verify_common_plugin_config_items(self):
 
         if not config_utils.check_config_section(self.config, self.name, self.logger):
-            self.enabled = False
+            self._enabled = False
         else:
             enabled = config_utils.get_config_param(self.config, self.name, "enabled", self.logger)
             if enabled is None:
                 self.logger.warning("Section: '" + self.name + "' is missing the 'enabled' property in the config file")
-                self.enabled = False
+                self._enabled = False
             elif enabled.lower() != "true":
-                self.enabled = False
+                self._enabled = False
 
     def is_initialized(self):
-        return self.enabled and self._initialized
+        return self._initialized
+
+    def is_enabled(self):
+        return self._enabled
 
     def get_name(self):
         return self.name
 
     # Must be overridden!
-    def get_dependencies(self):
+    @staticmethod
+    def get_dependencies():
         raise NotImplementedError

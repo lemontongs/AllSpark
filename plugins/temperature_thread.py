@@ -35,7 +35,7 @@ class TemperatureMonitorPlugin(ThreadedPlugin):
         
         self.current_temps = {}
         
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
@@ -96,7 +96,7 @@ class TemperatureMonitorPlugin(ThreadedPlugin):
             except (KeyboardInterrupt, SystemExit):
                 raise
             
-            except ValueError:
+            except (ValueError, TypeError):
                 logger.error( "Error getting temperature (" + device + ") setting to null" )
                 device_temp = "null"
                 self.current_temps[device] = None

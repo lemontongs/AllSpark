@@ -99,10 +99,11 @@ class SecurityPlugin(ThreadedPlugin):
 
         self.mutex = Lock()
         
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
-        self.monitor_device_name = config_utils.get_config_param(config, PLUGIN_NAME, "monitor_device_name", self.logger)
+        self.monitor_device_name = \
+            config_utils.get_config_param(config, PLUGIN_NAME, "monitor_device_name", self.logger)
         if self.monitor_device_name is None:
             return
 

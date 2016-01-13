@@ -23,7 +23,7 @@ class FurnaceControlPlugin(ThreadedPlugin):
 
         # Get parameters from the config file
 
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         self.disable_commands = config_utils.get_config_param(config, PLUGIN_NAME, "disable_commands", self.logger)

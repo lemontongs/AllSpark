@@ -20,7 +20,7 @@ class DeviceListenerPlugin(ThreadedPlugin):
     def __init__(self, object_group, config):
         ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
 
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         self._udp = UDPSocket(LISTEN_ADDR, LISTEN_PORT, LISTEN_PORT, PLUGIN_NAME + "_inf")

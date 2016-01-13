@@ -19,7 +19,7 @@ class SetPointPlugin(Plugin):
 
         self.set_point_lock = Lock()
 
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         self.set_point_filename = config_utils.get_config_param(config, PLUGIN_NAME, "set_point_file", self.logger)
@@ -187,7 +187,7 @@ class SetPointPlugin(Plugin):
                     </div>
                     <div class="col-md-5">
                         <h2></h2>
-                        <div class="input-group input-group-lg">                              <!-- ZONE NAME, SET POINT -->
+                        <div class="input-group input-group-lg">                           <!-- ZONE NAME, SET POINT -->
                             <input type="text" class="form-control" name="%s" value="%.1f">
                             <div class="input-group-btn">
                                 <button name="%s"

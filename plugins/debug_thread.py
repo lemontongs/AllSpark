@@ -1,6 +1,5 @@
 
 import time
-from utilities import config_utils
 from utilities.thread_base import ThreadedPlugin
 
 PLUGIN_NAME = "debug_thread"
@@ -15,7 +14,7 @@ class DebugThreadPlugin(ThreadedPlugin):
     def __init__(self, object_group, config):
         ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
 
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         if "collect_period" not in config.options(PLUGIN_NAME):

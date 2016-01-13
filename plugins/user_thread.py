@@ -16,7 +16,7 @@ class UserMonitorPlugin(ThreadedPlugin):
     def __init__(self, object_group, config):
         ThreadedPlugin.__init__(self, config=config, object_group=object_group, plugin_name=PLUGIN_NAME)
 
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)

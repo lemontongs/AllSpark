@@ -134,7 +134,10 @@ class DataLogger:
                 
                 # Add an array to the data
                 history.append( self.load_file(filepath) )
-        
+
+        if len(history) == 0:
+            history = [[]]
+
         return history
 
     def add_data(self, data):  # data should be an array of strings

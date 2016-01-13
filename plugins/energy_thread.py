@@ -32,7 +32,7 @@ class EnergyMonitorPlugin(ThreadedPlugin):
 
         self.mutex = Lock()
 
-        if not self.enabled:
+        if not self.is_enabled():
             return
 
         self.data_directory = config_utils.get_config_param(config, PLUGIN_NAME, "data_directory", self.logger)
@@ -40,7 +40,11 @@ class EnergyMonitorPlugin(ThreadedPlugin):
             return
 
         rtl_exe = config_utils.get_config_param(config, PLUGIN_NAME, "rtl_tcp_exe", self.logger)
-        if rtl_exe is None or not os.path.isfile(rtl_exe):
+        if rtl_exe is None:
+            return
+
+        if not os.path.isfile(rtl_exe):
+            self.logger.warning("Could not access: " + rtl_exe)
             return
 
         rtl_ppm = config_utils.get_config_param(config, PLUGIN_NAME, "rtl_ppm", self.logger)
@@ -49,7 +53,11 @@ class EnergyMonitorPlugin(ThreadedPlugin):
             rtl_ppm_args = " -freqcorrection=" + rtl_ppm
         
         amr_exe = config_utils.get_config_param(config, PLUGIN_NAME, "rtl_amr_exe", self.logger)
-        if amr_exe is None or not os.path.isfile(amr_exe):
+        if amr_exe is None:
+            return
+
+        if not os.path.isfile(amr_exe):
+            self.logger.warning("Could not access: " + rtl_exe)
             return
 
         self.meter_serial_number = \
