@@ -71,7 +71,7 @@ class ObjectGroup:
 
         if not self.twilio.is_initialized():
             logger.warning( "Failed to create twilio interface" )
-            return
+            #return
 
         ############################################################################
         # UDP Multicast
