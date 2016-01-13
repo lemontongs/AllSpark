@@ -15,10 +15,18 @@ class TwilioInterface:
         if not config_utils.check_config_section( config, CONFIG_SEC_NAME ):
             return
 
+        enabled = config_utils.get_config_param( config, CONFIG_SEC_NAME, "enabled", logger)
+        if enabled is None:
+            return
+
+        if enabled.lower() != "true":
+            logger.info("Twilio interface disabled")
+            return
+
         sid = config_utils.get_config_param( config, CONFIG_SEC_NAME, "sid", logger)
         if sid is None:
             return
-               
+
         auth = config_utils.get_config_param( config, CONFIG_SEC_NAME, "auth", logger)
         if auth is None:
             return
