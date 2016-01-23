@@ -160,6 +160,8 @@ class ObjectGroup:
                 if plugin.is_initialized() and hasattr(plugin, 'start') and callable(getattr(plugin, 'start')):
                     plugin.start()
 
+            self.comms.start()
+
             self._running = True
 
     def stop(self):
@@ -167,6 +169,8 @@ class ObjectGroup:
             for plugin in self.get_plugins():
                 if hasattr(plugin, 'stop') and callable(getattr(plugin, 'stop')):
                     plugin.stop()
+
+            self.comms.stop()
 
             self._running = False
 
