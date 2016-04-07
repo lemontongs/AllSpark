@@ -32,6 +32,13 @@ def arm_alarm():
     send_message("alarm,arm")
 
 
+def send_zwave_command(dev, val):
+    send_message("zwave,%s,%s" % (dev, val))
+
+###############################################################################
+# MAIN
+###############################################################################
+
 # print header
 print "Content-type: text/html\n\n"
 form = cgi.FieldStorage()
@@ -71,5 +78,23 @@ elif 'set_alarm' in form:
     else:
         print "INVALID"
 
+#
+# ZWave device control
+#
+elif 'set_zwave' in form:
+    try:
+        value  = int(form['set_zwave'].value) # dimmer value 0-255 or 0/1 for switch
+        device = form['device'].value    # uid of dimmer/switch
+
+        if value < 0 or value > 255:
+            print "Invalid value:", value
+        else:
+            print "OK"
+            send_zwave_command(device, value)
+
+    except ValueError:
+        print "Invalid value:", form['set_zwave'].value
+
+
 else:
-    print "INVALID"
+    print "INVALID REQUEST"

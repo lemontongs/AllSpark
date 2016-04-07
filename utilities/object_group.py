@@ -137,11 +137,23 @@ class ObjectGroup:
                 logger.error("Failed to load Plugin: " + plugin_class_name + "  " + te.message)
                 return
 
-        # Register the set_point callback
-        if hasattr(self, "set_point"):
-            set_p = getattr(self, "set_point")
-            if hasattr(set_p, "parse_set_point_message"):
-                self.comms.register_callback("set_point", set_p.parse_set_point_message)
+            # Register the set_point callback
+            if hasattr(self, "set_point"):
+                set_p = getattr(self, "set_point")
+                if hasattr(set_p, "parse_set_point_message"):
+                    self.comms.register_callback("set_point", set_p.parse_set_point_message)
+
+            # Register the alarm callback
+            if hasattr(self, "security_thread"):
+                sec_t = getattr(self, "security_thread")
+                if hasattr(sec_t, "parse_alarm_control_message"):
+                    self.comms.register_callback("alarm", sec_t.parse_alarm_control_message)
+
+            # Register the zwave callback
+            if hasattr(self, "zwave_control"):
+                zwave_c = getattr(self, "zwave_control")
+                if hasattr(zwave_c, "parse_zwave_command_message"):
+                    self.comms.register_callback("zwave", zwave_c.parse_zwave_command_message)
 
         self._initialized = True
 
