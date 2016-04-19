@@ -80,7 +80,7 @@ class SecurityState:
                     status += "\n" + zone
 
                 self.logger.info(status)
-                self.og.twilio.sendSMS(status, self.breach_number)
+                self.og.twilio.send_sms(status, self.breach_number)
                 self.og.broadcast.send("security:" + status)
 
         # Things that repeat until disarmed
